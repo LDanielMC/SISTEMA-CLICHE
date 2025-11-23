@@ -37,6 +37,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('clientes', ClienteController::class)->except(['show']);
     Route::get('/clientes/search', [ClienteController::class, 'search'])->name('clientes.search');
     Route::patch('/clientes/{cliente}/reactivar', [ClienteController::class, 'reactivar'])->name('clientes.reactivar');
+    Route::delete('/clientes/{cliente}/borrar-fiscal', [App\Http\Controllers\ClienteController::class, 'destroyFiscal'])
+    ->name('clientes.destroyFiscal');
+    Route::post('/verificar-password', [App\Http\Controllers\ClienteController::class, 'verificarPassword'])
+    ->name('password.verify');
 
 
 

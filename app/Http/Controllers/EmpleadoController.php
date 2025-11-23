@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB; // <--- IMPORTANTE: Necesario para las transacciones
+
 
 class EmpleadoController extends Controller
 {
@@ -100,7 +102,10 @@ class EmpleadoController extends Controller
 
     public function update(Request $request, Empleado $empleado)
     {
-        // 1) Validar los datos del formulario de edición
+        // Obtenemos el ID del usuario vinculado
+        $userId = $empleado->user->id;
+
+        // 1) Validar
         $request->validate([
             'nombre'            => 'required|string|max:120',
             'apellido_paterno'  => 'required|string|max:120',
@@ -108,22 +113,31 @@ class EmpleadoController extends Controller
             'telefono'          => 'required|string|max:30',
             'puesto'            => 'required|string|max:120',
             
+            // VALIDACIÓN DE CORREO: Único en users, ignorando a este usuario
+            'correo_contacto'   => 'required|email|max:255|unique:users,email,'.$userId,
         ]);
 
-        // 2) Actualizar los datos del modelo Empleado
-        $empleado->update([
-            'nombre'            => $request->nombre,
-            'apellido_paterno'  => $request->apellido_paterno,
-            'apellido_materno'  => $request->apellido_materno,
-            'telefono'          => $request->telefono,
-            'puesto'            => $request->puesto,
-            
-        ]);
+        DB::transaction(function () use ($request, $empleado) {
+            // 2) Actualizar datos del Empleado
+            $empleado->update([
+                'nombre'            => $request->nombre,
+                'apellido_paterno'  => $request->apellido_paterno,
+                'apellido_materno'  => $request->apellido_materno,
+                'telefono'          => $request->telefono,
+                'puesto'            => $request->puesto,
+            ]);
 
+            // 3) Actualizar el LOGIN (Tabla Users)
+            $user = $empleado->user;
+            // Solo si el correo cambió, lo actualizamos
+            if ($user->email !== $request->correo_contacto) {
+                $user->email = $request->correo_contacto;
+                $user->save();
+            }
+        });
 
-        // 4) Redirigir a la lista con un mensaje de éxito
         return redirect()->route('empleados.index')
-            ->with('success', 'Empleado actualizado correctamente.');
+            ->with('success', 'Empleado y credenciales actualizados correctamente.');
     }
 
     

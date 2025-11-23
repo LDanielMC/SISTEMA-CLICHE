@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB; // <--- IMPORTANTE: Necesario para las transacciones
+use Illuminate\Support\Facades\Auth;
 
 class ClienteController extends Controller
 {
@@ -21,29 +23,24 @@ class ClienteController extends Controller
         $sortDir = $request->query('sort_dir', 'desc');
 
         // --- 2. VALIDAR COLUMNAS PERMITIDAS PARA ORDENAR ---
-        // Para evitar errores o inyecciones, solo permitimos ordenar por columnas conocidas.
         $sortableColumns = ['nombre', 'telefono', 'empresa', 'giro_sector', 'fecha_registro', 'fecha_baja'];
         if (!in_array($sortBy, $sortableColumns)) {
-            $sortBy = 'fecha_registro'; // Columna por defecto si se intenta una no permitida
+            $sortBy = 'fecha_registro'; 
         }
 
         // --- 3. CONSTRUIR LA CONSULTA ---
         $clientes = Cliente::with('user')
                         ->where('estatus', $estatusFilter)
-                        // Aplicamos la ordenación dinámica
                         ->orderBy($sortBy, $sortDir)
                         ->get();
 
         // --- 4. PASAR DATOS A LA VISTA ---
-        // Pasamos también los parámetros de ordenación para construir los enlaces
         return view('clientes.index', compact('clientes', 'estatusFilter', 'sortBy', 'sortDir'));
     }
 
-    
-
     public function create()
     {
-        // Usuarios que tienen rol empleado
+        // Usuarios que tienen rol empleado (si los necesitas para algo visual, aunque en store creas uno nuevo para el cliente)
         $usuarios = User::where('rol', 'empleado')->get();
 
         return view('clientes.create', compact('usuarios'));
@@ -51,58 +48,80 @@ class ClienteController extends Controller
 
     public function store(Request $request)
     {
+        // 1. VALIDACIÓN INTEGRADA (Cliente + Fiscal)
         $request->validate([
+            // Datos Cliente
             'empresa'           => 'nullable|string|max:180',
             'nombre'            => 'required|string|max:120',
             'apellido_paterno'  => 'required|string|max:120',
             'apellido_materno'  => 'nullable|string|max:120',
             'giro_sector'       => 'required|string|max:150',
-            'correo'            => 'required|email|max:255|unique:users,email', // Valida contra la tabla Users
+            'correo'            => 'required|email|max:255|unique:users,email',
             'telefono'          => 'required|string|max:30',
+            'fecha_registro'    => 'required|date', // Asegúrate de enviar esto desde el form
+
+            // Datos Fiscales (Validación condicional)
+            'fiscal.rfc'             => 'nullable|required_with:fiscal.razon_social|max:20',
+            'fiscal.razon_social'    => 'nullable|required_with:fiscal.rfc|max:255',
+            'fiscal.regimen'         => 'nullable|max:120',
+            'fiscal.telefono_fiscal' => 'nullable|max:30',
+            'fiscal.correo_fiscal'   => 'nullable|email|max:255',
+            'fiscal.direccion_fiscal'=> 'nullable|max:400',
         ]);
 
-        // 1) Crear el usuario asociado al empleado
-        $user = User::create([
-            'email'    => $request->correo,
-            'rol'      => 'cliente',
-            // contraseña temporal random (la va a cambiar con el link de invitación)
-            'password' => Hash::make(Str::random(16)),
-        ]);
+        // USAMOS UNA TRANSACCIÓN PARA QUE TODO SE GUARDE O NADA SE GUARDE
+        DB::transaction(function () use ($request) {
+            
+            // 2) Crear el usuario asociado al cliente (Login)
+            $user = User::create([
+                'email'    => $request->correo,
+                'rol'      => 'cliente',
+                'password' => Hash::make(Str::random(16)), // Contraseña temporal
+            ]);
 
-        // 2) Crear el empleado vinculado al usuario
-        Cliente::create([
-            'empresa'           => $request->empresa,
-            'nombre'            => $request->nombre,
-            'apellido_paterno'  => $request->apellido_paterno,
-            'apellido_materno'  => $request->apellido_materno,
-            'giro_sector'       => $request->giro_sector,
-            'telefono'          => $request->telefono,
-            'estatus'           => 'activo',
-            'fecha_registro'     => $request->fecha_registro,
-            'id_usuario'        => $user->id,
-        ]);
+            // 3) Crear el cliente vinculado al usuario
+            // ¡IMPORTANTE! Asignamos el resultado a $cliente para usar su ID abajo
+            $cliente = Cliente::create([
+                'empresa'           => $request->empresa,
+                'nombre'            => $request->nombre,
+                'apellido_paterno'  => $request->apellido_paterno,
+                'apellido_materno'  => $request->apellido_materno,
+                'giro_sector'       => $request->giro_sector,
+                'telefono'          => $request->telefono,
+                'estatus'           => 'activo',
+                'fecha_registro'    => $request->fecha_registro,
+                'id_usuario'        => $user->id,
+            ]);
 
-        // 3) Enviar correo de "crear contraseña" (usa el sistema de reset de Laravel)
-        Password::sendResetLink([
-            'email' => $user->email,
-        ]);
+            // 4) Guardar Info Fiscal (Solo si se llenó el RFC)
+            if ($request->filled('fiscal.rfc')) {
+                // Creamos la info fiscal vinculada a este cliente
+                $cliente->infoFiscal()->create($request->input('fiscal'));
+            }
+
+            // 5) Enviar correo de invitación
+            Password::sendResetLink(['email' => $user->email]);
+        });
 
         return redirect()->route('clientes.index')
-            ->with('success', 'Cliente registrado. Se envió una invitación al correo para crear su contraseña.');
+            ->with('success', 'Cliente registrado y datos fiscales guardados. Se envió invitación.');
     }
 
     public function edit(Cliente $cliente)
     {
-        // Carga la vista de edición y le pasa el empleado que se quiere modificar.
-        // La vista 'empleados.edit' usará los datos de $empleado para rellenar el formulario.
-        // Nota: Tu archivo se llama 'edit.balde.php', Laravel buscará 'edit.blade.php'. 
-        // Asegúrate de que el nombre del archivo sea correcto.
+        // Laravel carga la relación automáticamente si la llamas en la vista, 
+        // pero es buena práctica precargarla aquí.
+        // $cliente->load('infoFiscal'); 
+        
         return view('clientes.edit', compact('cliente'));
     }
 
     public function update(Request $request, Cliente $cliente)
     {
-        // 1) Validar los datos del formulario de edición
+        // Obtenemos el ID del usuario para la validación (ignorar su propio correo actual)
+        $userId = $cliente->user->id;
+
+        // 1) Validar los datos (Cliente + Fiscal)
         $request->validate([
             'empresa'           => 'nullable|string|max:180',
             'nombre'            => 'required|string|max:120',
@@ -110,59 +129,70 @@ class ClienteController extends Controller
             'apellido_materno'  => 'nullable|string|max:120',
             'giro_sector'       => 'required|string|max:150',
             'telefono'          => 'required|string|max:30',
-           
+            
+            // "unique:users,email,ID" le dice a Laravel: "Revisa que sea único, pero sáltate este ID"
+            'correo'            => 'required|email|max:255|unique:users,email,'.$userId,
+
+            // Validación fiscal en edición
+            'fiscal.rfc'             => 'nullable|required_with:fiscal.razon_social|max:20',
+            'fiscal.razon_social'    => 'nullable|required_with:fiscal.rfc|max:255',
+            'fiscal.regimen'         => 'nullable|max:120',
+            'fiscal.telefono_fiscal' => 'nullable|max:30',
+            'fiscal.correo_fiscal'   => 'nullable|email|max:255',
+            'fiscal.direccion_fiscal'=> 'nullable|max:400',
         ]);
 
-        // 2) Actualizar los datos del modelo Empleado
-        $cliente->update([
-            'empresa'           => $request->empresa,
-            'nombre'            => $request->nombre,
-            'apellido_paterno'  => $request->apellido_paterno,
-            'apellido_materno'  => $request->apellido_materno,
-            'giro_sector'       => $request->giro_sector,
-            'telefono'          => $request->telefono,
-        ]);
+        DB::transaction(function () use ($request, $cliente) {
+            // 2) Actualizar datos del Cliente
+            $cliente->update([
+                'empresa'           => $request->empresa,
+                'nombre'            => $request->nombre,
+                'apellido_paterno'  => $request->apellido_paterno,
+                'apellido_materno'  => $request->apellido_materno,
+                'giro_sector'       => $request->giro_sector,
+                'telefono'          => $request->telefono,
+            ]);
+            
+            // 3) Actualizar el Correo (Login)
+            $user = $cliente->user;
+            if ($user->email !== $request->correo) {
+                $user->email = $request->correo;
+                $user->save();
+            }
+            
+            // 4) Actualizar o Crear Info Fiscal
+            if ($request->filled('fiscal.rfc')) {
+                $cliente->infoFiscal()->updateOrCreate(
+                    ['id_cliente' => $cliente->id_cliente], // Busca por cliente
+                    $request->input('fiscal')               // Guarda los datos
+                );
+            }
+        });
 
-
-        // 4) Redirigir a la lista con un mensaje de éxito
         return redirect()->route('clientes.index')
             ->with('success', 'Cliente actualizado correctamente.');
     }
 
-    
     public function destroy(string $id)
     {
-        // 1. Buscamos al empleado
         $cliente = \App\Models\Cliente::findOrFail($id);
 
-        // 2. CAMBIAMOS EL ESTATUS (Soft Delete)
         $cliente->estatus = 'inactivo'; 
-        
-        // 3. Registramos la fecha de baja
         $cliente->fecha_baja = now(); 
-
-        // 4. Guardamos los cambios
         $cliente->save();
 
-        // 5. Redirigimos con un mensaje de éxito
         return redirect()->route('clientes.index')
                         ->with('success', 'Cliente dado de baja correctamente.');
     }
 
-    /**
-     * Maneja la búsqueda AJAX de empleados.
-     */
     public function search(Request $request)
     {
-        // 1. Obtiene el término de búsqueda de la petición
         $query = $request->get('query');
-        $estatusFilter = $request->query('estatus', 'activo'); // Default 'activo'
+        $estatusFilter = $request->query('estatus', 'activo'); 
 
-        // 2. Inicia la consulta, usando la misma lógica del'index'
         $clientesQuery = Cliente::with('user')
                             ->where('estatus', $estatusFilter);
 
-        // 3. Si hay un término de búsqueda (no está vacío), aplica los filtros
         if (!empty($query)) {
             $clientesQuery->where(function($q) use ($query) {
                 $q->where('nombre', 'LIKE', '%' . $query . '%')
@@ -172,21 +202,21 @@ class ClienteController extends Controller
                 ->orWhere('telefono', 'LIKE', '%' . $query . '%') 
                 ->orWhereHas('user', function ($userQuery) use ($query) {
                     $userQuery->where('email', 'LIKE', '%' . $query . '%');
+                })
+                // OPCIONAL: Si quieres buscar también por RFC o Razón Social
+                ->orWhereHas('infoFiscal', function ($fiscalQuery) use ($query) {
+                     $fiscalQuery->where('rfc', 'LIKE', '%' . $query . '%')
+                                 ->orWhere('razon_social', 'LIKE', '%' . $query . '%');
                 });
             });
         }
 
-        // 4. Ejecuta la consulta (ya sea filtrada o no)
         $clientes = $clientesQuery->orderBy('id_cliente', 'desc')->get();
 
-        // 5. Devuelve la vista parcial con los resultados
         if ($clientes->count() > 0) {
-            // Devuelve el HTML renderizado del archivo parcial
             return view('clientes._tabla_clientes', compact('clientes'))->render();
         } else {
-            // El colspan ahora depende de si estamos en activos (7) o inactivos (8)
             $colspan = $estatusFilter === 'inactivo' ? 8 : 7;
-            // Devuelve un mensaje de "no encontrado"
             return '<tr><td colspan="' . $colspan . '" class="px-6 py-12 text-center text-gray-500">No se encontraron clientes con ese criterio de búsqueda.</td></tr>';
         }
     }
@@ -197,16 +227,50 @@ class ClienteController extends Controller
             return redirect()->route('clientes.index')
                 ->with('error', 'Solo se pueden reactivar clientes con estatus de inactivo.');
             
-        }else{
-        // Cambia el estatus a 'activo' y limpia la fecha de baja
-        $cliente->estatus = 'activo';
-        $cliente->fecha_registro = now();
-        $cliente->fecha_baja = null;
-        $cliente->save();
+        } else {
+            $cliente->estatus = 'activo';
+            $cliente->fecha_registro = now(); // Opcional: actualizar fecha reingreso
+            $cliente->fecha_baja = null;
+            $cliente->save();
 
-        return redirect()->route('clientes.index')
-            ->with('success', 'Cliente reactivado correctamente.');
+            return redirect()->route('clientes.index')
+                ->with('success', 'Cliente reactivado correctamente.');
         }
+    }
+
+    public function destroyFiscal(Request $request, Cliente $cliente)
+    {
+        // 1. Validar que escribieron una contraseña
+        $request->validate([
+            'password_confirm' => 'required|string',
+        ]);
+
+        // 2. Verificar si la contraseña del ADMIN es correcta
+        if (!Hash::check($request->password_confirm, Auth::user()->password)) {
+            // Si falla, regresamos con un error específico
+            return back()
+                ->withInput() // Mantiene los inputs abiertos
+                ->withErrors(['password_confirm' => 'La contraseña es incorrecta. No se eliminó nada.']);
+        }
+
+        // 3. Si la contraseña es correcta, borramos la info fiscal
+        if ($cliente->infoFiscal) {
+            $cliente->infoFiscal()->delete();
+        }
+
+        return redirect()->route('clientes.edit', $cliente->id_cliente)
+            ->with('success', 'Información fiscal eliminada correctamente.');
+    }
+
+    public function verificarPassword(Request $request)
+    {
+        $request->validate(['password' => 'required']);
+
+        if (Hash::check($request->password, Auth::user()->password)) {
+            return response()->json(['status' => 'success']);
+        }
+
+        return response()->json(['status' => 'error'], 401);
     }
 
 

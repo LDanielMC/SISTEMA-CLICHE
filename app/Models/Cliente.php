@@ -35,4 +35,11 @@ class Cliente extends Model
         'fecha_registro' => 'date', // Esto convierte la fecha en un objeto Carbon
         'fecha_baja' => 'date',
     ];
+
+    
+    public function infoFiscal()
+    {
+        return $this->hasOne(InfoFiscal::class, 'id_cliente', 'id_cliente');
+    }
+
 }
