@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\CotizacionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -41,6 +42,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     ->name('clientes.destroyFiscal');
     Route::post('/verificar-password', [App\Http\Controllers\ClienteController::class, 'verificarPassword'])
     ->name('password.verify');
+
+    // --- GRUPO COTIZACIONES ---
+    Route::get('/cotizaciones/search', [CotizacionController::class, 'search'])->name('cotizaciones.search');
+    Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf'); // Futuro PDF
+    Route::resource('cotizaciones', CotizacionController::class)->parameters(['cotizaciones' => 'cotizacion']);
 
 
 
