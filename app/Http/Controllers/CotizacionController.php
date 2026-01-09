@@ -7,6 +7,7 @@ use App\Models\CotizacionDetalle;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf; // Asegúrate de tener instalado barryvdh/laravel-dompdf
 
 class CotizacionController extends Controller
 {
@@ -60,7 +61,7 @@ class CotizacionController extends Controller
             $totalGeneral = 0;
             $detallesData = [];
 
-            // ✅ CLAVE: Reseteamos los índices para guardar orden secuencial (0, 1, 2...)
+            // Reseteamos los índices para guardar orden secuencial (0, 1, 2...)
             $partidasOrdenadas = array_values($request->partidas);
 
             foreach ($partidasOrdenadas as $index => $item) {
@@ -76,7 +77,7 @@ class CotizacionController extends Controller
                 $totalGeneral    += $totalLinea;
 
                 $detallesData[] = [
-                    'orden'           => $index, // Guardamos 0, 1, 2...
+                    'orden'           => $index,
                     'titulo'          => $item['titulo'],
                     'cantidad'        => $cantidad,
                     'descripcion'     => $item['descripcion'],
@@ -110,7 +111,7 @@ class CotizacionController extends Controller
     {
         $clientes = Cliente::where('estatus', 'activo')->orderBy('nombre')->get();
         
-        // Cargamos ordenados por la columna 'orden'
+        // Cargamos los detalles ordenados por la columna 'orden'
         $cotizacion->load(['detalles' => function($query) {
             $query->orderBy('orden', 'asc');
         }]);
@@ -144,8 +145,7 @@ class CotizacionController extends Controller
             $totalGeneral = 0;
             $idsMantenidos = [];
 
-            // ✅ SOLUCIÓN DE ORO: array_values ignora las llaves (partidas[5], partidas[2])
-            // y procesa la lista estrictamente en el orden visual (0, 1, 2...)
+            // array_values asegura que procesamos la lista estrictamente en el orden visual
             $partidasOrdenadas = array_values($request->partidas);
 
             foreach ($partidasOrdenadas as $index => $item) {
@@ -162,7 +162,7 @@ class CotizacionController extends Controller
                 $totalGeneral    += $totalLinea;
 
                 $data = [
-                    'orden'           => $index, // Aquí aseguramos el orden visual
+                    'orden'           => $index, // Guardamos el orden visual correcto
                     'titulo'          => $item['titulo'],
                     'cantidad'        => $cantidad,
                     'descripcion'     => $item['descripcion'] ?? '',
@@ -189,7 +189,7 @@ class CotizacionController extends Controller
                 ->whereNotIn('id_detalle', $idsMantenidos)
                 ->delete();
 
-            // Actualizar totales
+            // Actualizar totales y cabecera
             $cotizacion->update([
                 'titulo_cotizacion' => $request->titulo_cotizacion,
                 'id_cliente'        => $request->id_cliente,
@@ -207,7 +207,6 @@ class CotizacionController extends Controller
         return redirect()->route('cotizaciones.index')
             ->with('success', 'Cotización actualizada correctamente.');
     }
-
 
     public function destroy(Cotizacion $cotizacion)
     {
@@ -246,8 +245,22 @@ class CotizacionController extends Controller
         }
     }
     
+    // ✅ 2. ACTUALIZADO: Método para generar el PDF
     public function pdf(Cotizacion $cotizacion)
     {
-        return "Aquí se generará el PDF de la cotización #" . $cotizacion->id_cotizacion;
+        // Cargamos los datos necesarios.
+        // IMPORTANTE: Ordenamos los detalles por 'orden' ascendente para que salgan igual que en la vista de edición.
+        $cotizacion->load(['cliente', 'detalles' => function($q) {
+            $q->orderBy('orden', 'asc');
+        }]);
+
+        // Cargamos la vista del PDF con los datos
+        $pdf = Pdf::loadView('cotizaciones.pdf', compact('cotizacion'));
+
+        // Configuramos tamaño de papel (A4 es estándar)
+        $pdf->setPaper('A4', 'portrait');
+
+        // 'stream' muestra el PDF en el navegador. Si prefieres que se descargue directo, usa 'download'.
+        return $pdf->stream('Cotizacion-' . str_pad($cotizacion->id_cotizacion, 5, '0', STR_PAD_LEFT) . '.pdf');
     }
 }

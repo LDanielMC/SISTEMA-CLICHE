@@ -45,7 +45,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // --- GRUPO COTIZACIONES ---
     Route::get('/cotizaciones/search', [CotizacionController::class, 'search'])->name('cotizaciones.search');
-    Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf'); // Futuro PDF
+    Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf');
     Route::resource('cotizaciones', CotizacionController::class)->parameters(['cotizaciones' => 'cotizacion']);
 
 
