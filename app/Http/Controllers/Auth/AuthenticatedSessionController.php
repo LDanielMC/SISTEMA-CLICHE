@@ -28,16 +28,26 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $user = $request->user(); // <-- obtener usuario autenticado
+        $user = $request->user();
 
-        // si es admin, mándalo a su dashboard especial
-        if ($user && $user->rol === 'admin') {
+        // 1. Redirección para Admin
+        if ($user->rol === 'admin') {
             return redirect()->route('admin.dashboard');
         }
 
-        // para empleados/clientes, de momento los mandamos al dashboard normal
-        return redirect()->intended(route('dashboard', absolute: false));
+        // 2. Redirección para Empleado
+        if ($user->rol === 'empleado') {
+            return redirect()->route('empleado.dashboard');
         }
+
+        // 3. Redirección para Cliente
+        if ($user->rol === 'cliente') {
+            return redirect()->route('cliente.dashboard');
+        }
+
+        // 4. Fallback: Si no tiene rol definido o es otro, al dashboard general
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
 
     /**
      * Destroy an authenticated session.

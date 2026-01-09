@@ -1,57 +1,69 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\CotizacionController;
+// use App\Http\Controllers\ProfileController; // <-- YA NO LO NECESITAMOS
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// este "dashboard" lo podemos dejar para usuarios normales
+// --- 1. RUTA DASHBOARD GENÉRICA (FALLBACK) ---
+// Es necesaria por si el login intenta redirigir aquí por defecto
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// rutas generales autenticadas
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+// --- 2. RUTAS PARA EMPLEADO ---
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/empleado/dashboard', function () {
+        if (Auth::user()->rol !== 'empleado') {
+            abort(403, 'No autorizado.');
+        }
+        // CAMBIO AQUÍ: Apuntamos a la carpeta 'portal_empleado'
+        return view('portal_empleado.dashboard'); 
+    })->name('empleado.dashboard');
 });
 
-// 🔐 rutas solo para admin
+
+// --- 3. RUTAS PARA CLIENTE ---
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/cliente/dashboard', function () {
+        if (Auth::user()->rol !== 'cliente') {
+            abort(403, 'No autorizado.');
+        }
+        // CAMBIO AQUÍ: Apuntamos a la carpeta 'portal_cliente'
+        return view('portal_cliente.dashboard'); 
+    })->name('cliente.dashboard');
+});
+
+// --- 4. RUTAS SOLO PARA ADMIN ---
 Route::middleware(['auth', 'admin'])->group(function () {
+    
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
         ->name('admin.dashboard');
 
-
-    // --- GRUPO EMPLEADOS ---
+    // EMPLEADOS
     Route::resource('empleados', EmpleadoController::class)->except(['show']);
     Route::get('/empleados/search', [EmpleadoController::class, 'search'])->name('empleados.search');
     Route::patch('/empleados/{empleado}/reactivar', [EmpleadoController::class, 'reactivar'])->name('empleados.reactivar');
 
-    // --- GRUPO CLIENTES ---
+    // CLIENTES
     Route::resource('clientes', ClienteController::class)->except(['show']);
     Route::get('/clientes/search', [ClienteController::class, 'search'])->name('clientes.search');
     Route::patch('/clientes/{cliente}/reactivar', [ClienteController::class, 'reactivar'])->name('clientes.reactivar');
-    Route::delete('/clientes/{cliente}/borrar-fiscal', [App\Http\Controllers\ClienteController::class, 'destroyFiscal'])
-    ->name('clientes.destroyFiscal');
-    Route::post('/verificar-password', [App\Http\Controllers\ClienteController::class, 'verificarPassword'])
-    ->name('password.verify');
+    Route::delete('/clientes/{cliente}/borrar-fiscal', [ClienteController::class, 'destroyFiscal'])->name('clientes.destroyFiscal');
+    Route::post('/verificar-password', [ClienteController::class, 'verificarPassword'])->name('password.verify');
 
-    // --- GRUPO COTIZACIONES ---
+    // COTIZACIONES
     Route::get('/cotizaciones/search', [CotizacionController::class, 'search'])->name('cotizaciones.search');
     Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf');
     Route::resource('cotizaciones', CotizacionController::class)->parameters(['cotizaciones' => 'cotizacion']);
-
-
-
 });
-
-
 
 require __DIR__.'/auth.php';

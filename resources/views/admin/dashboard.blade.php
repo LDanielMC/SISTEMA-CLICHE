@@ -1,70 +1,142 @@
 {{-- resources/views/admin/dashboard.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Panel de administración
-        </h2>
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Panel de administración
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">
+                    Bienvenido al SGI de Cliché. Accesos rápidos a los módulos principales.
+                </p>
+            </div>
+
+            {{-- Sutil “chip” de marca --}}
+            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 backdrop-blur border border-blue-100 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-[#004481]"></span>
+                <span class="text-xs font-semibold tracking-wide text-blue-900/80">CLICHÉ SGI</span>
+            </div>
+        </div>
     </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {{-- Tarjeta Gestión de Usuarios (Empleados) --}}
-                <a href="{{ route('empleados.index') }}" 
-                   class="block bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200 hover:shadow-md transition">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">
-                            Gestión de usuarios (empleados)
-                        </h3>
-                        <p class="text-gray-600 text-sm">
-                            Ver, registrar, actualizar y eliminar la información de los empleados 
-                            que colaboran en la empresa.
-                        </p>
-                    </div>
-                </a>
+    {{-- Fondo sutil (NO saturado) --}}
+    <div class="relative">
+        <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            {{-- manchitas MUY suaves --}}
+            <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-sky-200 blur-3xl opacity-35"></div>
+            <div class="absolute -top-28 -right-24 w-[28rem] h-[28rem] rounded-full bg-indigo-200 blur-3xl opacity-30"></div>
+            <div class="absolute -bottom-32 left-1/3 w-[36rem] h-[28rem] rounded-full bg-blue-200 blur-3xl opacity-30"></div>
+        </div>
 
-                {{-- Tarjeta Gestión de Clientes --}}
-                <a href="{{ route('clientes.index') }}" 
-                   class="block bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200 hover:shadow-md transition">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">
-                            Gestión de clientes
-                        </h3>
-                        <p class="text-gray-600 text-sm">
-                            Ver, registrar, actualizar y eliminar la información de los clientes de Cliché.
-                        </p>
-                    </div>
-                </a>
+        <div class="py-8">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                {{-- Contenedor tipo “glass” MUY leve --}}
+                <div class="bg-white/60 backdrop-blur-sm border border-white/60 rounded-2xl shadow-sm p-4 sm:p-6">
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-               <a href="{{ route('cotizaciones.index') }}" class="group block"> 
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-300 border-l-4 border-emerald-500">
-                        <div class="p-6 text-gray-900 flex items-center justify-between">
-                            <div>
-                                <h3 class="text-lg font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">
-                                    Cotizaciones
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    Crear, enviar y gestionar presupuestos.
-                                </p>
+                        {{-- ✅ Tarjeta Gestión de Usuarios (Empleados) --}}
+                        <a href="{{ route('empleados.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                                    {{-- Icon --}}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#004481]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H2v-2a4 4 0 014-4h1m9-4a4 4 0 10-8 0 4 4 0 008 0zm6 4a3 3 0 10-6 0 3 3 0 006 0z"/>
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-[#004481] transition-colors">
+                                        Gestión de usuarios (empleados)
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Ver, registrar, actualizar y eliminar información de empleados.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-[#004481] transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
                             </div>
-                            
-                            <div class="bg-emerald-100 p-3 rounded-full group-hover:bg-emerald-200 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Administrar empleados</span>
+                                <span class="text-[#004481] font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
                             </div>
-                        </div>
-                        
-                        {{-- Footer de la tarjeta con resumen rápido (Opcional) --}}
-                        <div class="bg-gray-50 px-6 py-2 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
-                            <span>Ver historial</span>
-                            <span class="text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">Ir ahora &rarr;</span>
-                        </div>
+                        </a>
+
+                        {{-- ✅ Tarjeta Gestión de Clientes --}}
+                        <a href="{{ route('clientes.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                                    {{-- Icon --}}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#004481]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-2a4 4 0 014-4h10a4 4 0 014 4v2M16 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-[#004481] transition-colors">
+                                        Gestión de clientes
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Administrar clientes de Cliché y su información básica.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-[#004481] transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
+                            </div>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Ver clientes</span>
+                                <span class="text-[#004481] font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
+                            </div>
+                        </a>
+
+                        {{-- ✅ Tarjeta Cotizaciones (tu tarjeta, pero con marca sutil) --}}
+                        <a href="{{ route('cotizaciones.index') }}" class="group block">
+                            <div class="rounded-2xl bg-white/70 hover:bg-white overflow-hidden shadow-sm hover:shadow-md transition border border-gray-200">
+                                <div class="p-6 text-gray-900 flex items-center justify-between">
+                                    <div class="flex items-start gap-4">
+                                        <div class="shrink-0 w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-100">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">
+                                                Cotizaciones
+                                            </h3>
+                                            <p class="text-sm text-gray-500 mt-1">
+                                                Crear, enviar y gestionar presupuestos.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-gray-400 group-hover:text-emerald-600 transition-colors">
+                                        <span class="text-xl">&rsaquo;</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-gray-50/60 px-6 py-2 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
+                                    <span>Ver historial</span>
+                                    <span class="text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">Ir ahora &rarr;</span>
+                                </div>
+                            </div>
+                        </a>
+
                     </div>
-                </a>
 
+                    {{-- footer mini opcional --}}
+                    <div class="mt-6 flex items-center justify-between text-xs text-gray-500">
+                        <span>Último acceso: {{ now()->format('d/m/Y H:i') }}</span>
+                        <span class="font-semibold text-blue-900/70">Cliché SGI</span>
+                    </div>
 
+                </div>
             </div>
         </div>
     </div>
