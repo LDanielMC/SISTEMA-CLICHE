@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\CotizacionController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\TareaController;
+use App\Http\Controllers\AsignacionTareaController;
 // use App\Http\Controllers\ProfileController; // <-- YA NO LO NECESITAMOS
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -77,6 +78,21 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/tareas/search', [TareaController::class, 'search'])->name('tareas.search');
     Route::get('/tareas/search-clientes', [TareaController::class, 'searchClientes'])->name('tareas.searchClientes');
     Route::get('/tareas/search-categorias', [TareaController::class, 'searchCategorias'])->name('tareas.searchCategorias');
+
+    // ASIGNACIONES DE TAREAS (Admin)
+    Route::resource('asignaciones', AsignacionTareaController::class)->except(['show', 'edit']);
+    Route::get('/asignaciones/search-tareas', [AsignacionTareaController::class, 'searchTareas'])->name('asignaciones.searchTareas');
+    Route::get('/asignaciones/search-empleados', [AsignacionTareaController::class, 'searchEmpleados'])->name('asignaciones.searchEmpleados');
+    Route::get('/asignaciones/empleado/{empleado}', [AsignacionTareaController::class, 'tareasEmpleado'])->name('asignaciones.tareasEmpleado');
+    Route::post('/asignaciones/{asignacion}/actualizar-estado-admin', [AsignacionTareaController::class, 'actualizarEstadoAdmin'])->name('asignaciones.actualizarEstadoAdmin');
+});
+
+// Rutas para empleados autenticados
+Route::middleware(['auth'])->group(function () {
+    // MIS TAREAS ASIGNADAS (Empleado)
+    Route::get('/mis-tareas', [AsignacionTareaController::class, 'misTareas'])->name('asignaciones.misTareas');
+    Route::post('/mis-tareas/{asignacion}/actualizar-estado', [AsignacionTareaController::class, 'actualizarEstadoEmpleado'])->name('asignaciones.actualizarEstadoEmpleado');
+    Route::post('/mis-tareas/{asignacion}/subir-evidencia', [AsignacionTareaController::class, 'subirEvidencia'])->name('asignaciones.subirEvidencia');
 });
 
 require __DIR__.'/auth.php';
