@@ -186,6 +186,35 @@
                             </div>
                         </a>
 
+                        {{-- ✅ Tarjeta Asignaciones --}}
+                        <a href="{{ route('asignaciones.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">
+                                        Asignación de tareas
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Asignar tareas a empleados y evaluar su desempeño.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-indigo-600 transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
+                            </div>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Gestionar asignaciones</span>
+                                <span class="text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
+                            </div>
+                        </a>
+
                     </div>
 
                     {{-- footer mini opcional --}}

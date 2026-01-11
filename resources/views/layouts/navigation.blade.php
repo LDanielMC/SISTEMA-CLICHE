@@ -77,6 +77,24 @@
                             {{ __('Tareas') }}
                         </x-nav-link>
 
+                        <x-nav-link
+                            :href="route('asignaciones.index')"
+                            :active="request()->routeIs('asignaciones.*')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('asignaciones.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Asignaciones') }}
+                        </x-nav-link>
+
+                    @endif
+
+                    @if(auth()->user()->rol == 'empleado')
+                        <x-nav-link
+                            :href="route('asignaciones.misTareas')"
+                            :active="request()->routeIs('asignaciones.misTareas')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('asignaciones.misTareas') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Mis Tareas') }}
+                        </x-nav-link>
                     @endif
                 </div>
             </div>
