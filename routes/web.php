@@ -4,6 +4,8 @@ use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\CotizacionController;
+use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\TareaController;
 // use App\Http\Controllers\ProfileController; // <-- YA NO LO NECESITAMOS
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -64,6 +66,17 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/cotizaciones/search', [CotizacionController::class, 'search'])->name('cotizaciones.search');
     Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf');
     Route::resource('cotizaciones', CotizacionController::class)->parameters(['cotizaciones' => 'cotizacion']);
+
+    // CATEGORÍAS
+    Route::resource('categorias', CategoriaController::class)->except(['show']);
+    Route::get('/categorias/search', [CategoriaController::class, 'search'])->name('categorias.search');
+    Route::patch('/categorias/{categoria}/reactivar', [CategoriaController::class, 'reactivar'])->name('categorias.reactivar');
+
+    // TAREAS
+    Route::resource('tareas', TareaController::class)->except(['show']);
+    Route::get('/tareas/search', [TareaController::class, 'search'])->name('tareas.search');
+    Route::get('/tareas/search-clientes', [TareaController::class, 'searchClientes'])->name('tareas.searchClientes');
+    Route::get('/tareas/search-categorias', [TareaController::class, 'searchCategorias'])->name('tareas.searchCategorias');
 });
 
 require __DIR__.'/auth.php';

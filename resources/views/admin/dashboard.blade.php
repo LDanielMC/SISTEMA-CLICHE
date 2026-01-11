@@ -95,7 +95,7 @@
                             </div>
                         </a>
 
-                        {{-- ✅ Tarjeta Cotizaciones (tu tarjeta, pero con marca sutil) --}}
+                        {{-- ✅ Tarjeta Cotizaciones --}}
                         <a href="{{ route('cotizaciones.index') }}" class="group block">
                             <div class="rounded-2xl bg-white/70 hover:bg-white overflow-hidden shadow-sm hover:shadow-md transition border border-gray-200">
                                 <div class="p-6 text-gray-900 flex items-center justify-between">
@@ -125,6 +125,64 @@
                                     <span>Ver historial</span>
                                     <span class="text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">Ir ahora &rarr;</span>
                                 </div>
+                            </div>
+                        </a>
+
+                        {{-- ✅ Tarjeta Categorías --}}
+                        <a href="{{ route('categorias.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-purple-600 transition-colors">
+                                        Catálogo de categorías
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Gestionar categorías para clasificación de tareas.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-purple-600 transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
+                            </div>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Administrar categorías</span>
+                                <span class="text-purple-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
+                            </div>
+                        </a>
+
+                        {{-- ✅ Tarjeta Tareas --}}
+                        <a href="{{ route('tareas.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center border border-orange-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
+                                        Gestión de tareas
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Organizar y administrar tareas internas del equipo.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-orange-600 transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
+                            </div>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Ver tareas</span>
+                                <span class="text-orange-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
                             </div>
                         </a>
 
