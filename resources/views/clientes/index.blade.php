@@ -71,7 +71,7 @@
                                name="search"
                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                                {{-- El placeholder ahora es dinámico --}}
-                               placeholder="Buscar en {{ $estatusFilter == 'activo' ? 'activos' : 'inactivos' }}...">
+                               placeholder="Buscar por Nombre, Correo, Teléfono, Empresa, Giro/Sector...">
                     </div>
 
                     {{-- Contenido: Tabla o Estado Vacío --}}

@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\User;
+// IMPORTANTE: Agregamos el modelo de la bitácora
+use App\Models\BitacoraCliente; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB; // <--- IMPORTANTE: Necesario para las transacciones
+use Illuminate\Support\Facades\DB; 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException; 
 
 class ClienteController extends Controller
 {
@@ -153,11 +156,31 @@ class ClienteController extends Controller
                 'telefono'          => $request->telefono,
             ]);
             
-            // 3) Actualizar el Correo (Login)
+            // 3) Actualizar el Correo (Login) y ENVIAR EMAIL SI CAMBIÓ
             $user = $cliente->user;
+            
+            // Detectamos si el correo del formulario ($request->correo) es diferente al de la BD
             if ($user->email !== $request->correo) {
+                
+                // VALIDACIÓN DE SEGURIDAD:
+                // Si la vista está enviando la contraseña del admin (password_admin_confirmation),
+                // la verificamos antes de permitir el cambio sensible.
+                if ($request->filled('password_admin_confirmation')) {
+                    if (! Hash::check($request->password_admin_confirmation, Auth::user()->password)) {
+                        throw ValidationException::withMessages([
+                            'correo' => 'La contraseña de administrador es incorrecta. No se pudo actualizar el correo.',
+                        ]);
+                    }
+                }
+
+                // Actualizamos el correo
                 $user->email = $request->correo;
+                $user->email_verified_at = null; // Reseteamos la verificación por seguridad
                 $user->save();
+
+                // ---> AQUÍ ESTÁ LA MAGIA: ENVÍO AUTOMÁTICO <---
+                // Enviamos el link de "Restablecer contraseña" al NUEVO correo
+                Password::sendResetLink(['email' => $user->email]);
             }
             
             // 4) Actualizar o Crear Info Fiscal
@@ -169,20 +192,38 @@ class ClienteController extends Controller
             }
         });
 
+        // Verificamos si hubo cambio de correo para mandar un mensaje más específico
+        $mensajeExito = 'Cliente actualizado correctamente.';
+        if ($cliente->user->wasChanged('email')) { // Esto podría no funcionar fuera de la transacción si se recarga, pero el flujo lógico ya pasó.
+             // Mejor usamos una bandera simple o asumimos que si llegamos aquí todo está bien.
+        }
+
         return redirect()->route('clientes.index')
-            ->with('success', 'Cliente actualizado correctamente.');
+            ->with('success', 'Cliente actualizado correctamente. Si cambiaste el correo, se envió un enlace de acceso al nuevo email.');
     }
 
     public function destroy(string $id)
     {
         $cliente = \App\Models\Cliente::findOrFail($id);
 
-        $cliente->estatus = 'inactivo'; 
-        $cliente->fecha_baja = now(); 
-        $cliente->save();
+        // MODIFICACIÓN: Usamos una transacción para asegurar baja + bitácora
+        DB::transaction(function () use ($cliente) {
+            // 1. Dar de baja
+            $cliente->estatus = 'inactivo'; 
+            $cliente->fecha_baja = now(); 
+            $cliente->save();
+
+            // 2. GUARDAR EN BITÁCORA
+            BitacoraCliente::create([
+                'id_cliente' => $cliente->id_cliente,
+                'accion' => 'baja', // <--- Se guarda la acción
+                'id_usuario_responsable' => Auth::id(), // <--- Se guarda quién lo hizo
+                'fecha_movimiento' => now(), // <--- Fecha exacta
+            ]);
+        });
 
         return redirect()->route('clientes.index')
-                        ->with('success', 'Cliente dado de baja correctamente.');
+                        ->with('success', 'Cliente dado de baja correctamente (Bitácora actualizada).');
     }
 
     public function search(Request $request)
@@ -228,13 +269,25 @@ class ClienteController extends Controller
                 ->with('error', 'Solo se pueden reactivar clientes con estatus de inactivo.');
             
         } else {
-            $cliente->estatus = 'activo';
-            $cliente->fecha_registro = now(); // Opcional: actualizar fecha reingreso
-            $cliente->fecha_baja = null;
-            $cliente->save();
+            // MODIFICACIÓN: Transacción para reactivación + bitácora
+            DB::transaction(function () use ($cliente) {
+                // 1. Reactivar
+                $cliente->estatus = 'activo';
+                $cliente->fecha_registro = now(); 
+                $cliente->fecha_baja = null;
+                $cliente->save();
+
+                // 2. GUARDAR EN BITÁCORA
+                BitacoraCliente::create([
+                    'id_cliente' => $cliente->id_cliente,
+                    'accion' => 'reactivacion', // <--- Se guarda la acción
+                    'id_usuario_responsable' => Auth::id(), // <--- Quién lo reactivó
+                    'fecha_movimiento' => now(),
+                ]);
+            });
 
             return redirect()->route('clientes.index')
-                ->with('success', 'Cliente reactivado correctamente.');
+                ->with('success', 'Cliente reactivado correctamente (Bitácora actualizada).');
         }
     }
 
@@ -272,7 +325,4 @@ class ClienteController extends Controller
 
         return response()->json(['status' => 'error'], 401);
     }
-
-
-
 }

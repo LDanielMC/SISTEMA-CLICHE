@@ -17,6 +17,8 @@ class Cotizacion extends Model
         'vencimiento_dias',
         'subtotal',
         'iva_total',
+        'porcentaje_isr', 
+        'retencion_isr', 
         'total',
         'notas',
         'estatus'
@@ -28,6 +30,8 @@ class Cotizacion extends Model
         'subtotal' => 'decimal:2',
         'iva_total' => 'decimal:2',
         'total' => 'decimal:2',
+        'porcentaje_isr' => 'decimal:2',
+        'retencion_isr' => 'decimal:2',
     ];
 
     // Relación: Una cotización pertenece a un cliente

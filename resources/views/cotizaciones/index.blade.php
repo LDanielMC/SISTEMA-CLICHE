@@ -22,15 +22,20 @@
 
                     <a href="{{ route('cotizaciones.index', ['estatus' => 'todas']) }}" 
                        class="{{ $claseBase }} {{ $current == 'todas' ? $claseActiva : $claseInactiva }}">
-                       Todas
+                        Todas
                     </a>
                     <a href="{{ route('cotizaciones.index', ['estatus' => 'pendiente']) }}" 
                        class="{{ $claseBase }} {{ $current == 'pendiente' ? $claseActiva : $claseInactiva }}">
-                       Pendientes
+                        Pendientes
                     </a>
                     <a href="{{ route('cotizaciones.index', ['estatus' => 'aceptada']) }}" 
                        class="{{ $claseBase }} {{ $current == 'aceptada' ? $claseActiva : $claseInactiva }}">
-                       Aceptadas
+                        Aceptadas
+                    </a>
+                    {{-- Nueva pestaña para Rechazadas --}}
+                    <a href="{{ route('cotizaciones.index', ['estatus' => 'rechazada']) }}" 
+                       class="{{ $claseBase }} {{ $current == 'rechazada' ? $claseActiva : $claseInactiva }}">
+                        Rechazadas
                     </a>
                 </div>
 
@@ -58,7 +63,10 @@
             
             {{-- Paginación (si no es búsqueda ajax) --}}
             <div class="mt-4">
-                {{ $cotizaciones->appends(['estatus' => $current])->links() }}
+                {{-- Verificamos si es una colección paginada antes de llamar a links() --}}
+                @if(method_exists($cotizaciones, 'links'))
+                    {{ $cotizaciones->appends(['estatus' => $current])->links() }}
+                @endif
             </div>
 
         </div>

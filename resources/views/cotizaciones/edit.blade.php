@@ -75,7 +75,7 @@
                         </div>
                         <p class="text-xs text-gray-500 mb-2">Usa las flechas para reordenar o el botón "+" para insertar filas intermedias.</p>
 
-                        {{-- ✅ AÑADIDO: overflow-x-auto asegura scroll horizontal si no cabe --}}
+                        {{-- overflow-x-auto asegura scroll horizontal si no cabe --}}
                         <div class="overflow-x-auto border border-gray-200 rounded-lg">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider text-left">
@@ -133,7 +133,7 @@
                                                 </div>
                                             </td>
 
-                                            {{-- Título - AHORA ES TEXTAREA --}}
+                                            {{-- Título --}}
                                             <td class="px-4 py-2 align-top">
                                                 <textarea :name="'partidas['+index+'][titulo]'" x-model="row.titulo" rows="2"
                                                        class="w-full text-sm border-gray-300 rounded-md font-medium" required></textarea>
@@ -171,11 +171,14 @@
                                             {{-- Acciones --}}
                                             <td class="px-4 py-2 text-center align-top pt-3">
                                                 <div class="flex items-center justify-center space-x-2">
+                                                    {{-- Insertar Debajo --}}
                                                     <button type="button" @click="addRowAfter(index)" class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 p-1 rounded-full hover:bg-emerald-100 transition-colors" title="Insertar fila debajo">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                             <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
                                                         </svg>
                                                     </button>
+
+                                                    {{-- Eliminar --}}
                                                     <button type="button" @click="removeRow(index)" class="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors" title="Eliminar fila">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -221,6 +224,22 @@
                                 <span class="text-gray-600">IVA Total:</span>
                                 <span class="font-semibold text-gray-800" x-text="formatMoney(netIva)"></span>
                             </div>
+                            
+                            {{-- NUEVO: Campo ISR --}}
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="porcentaje_isr" class="text-gray-600 text-sm font-medium">ISR (+%):</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" 
+                                           name="porcentaje_isr" 
+                                           id="porcentaje_isr"
+                                           x-model="porcentaje_isr" 
+                                           min="0" max="100" step="0.01" 
+                                           placeholder="0"
+                                           class="w-20 text-right p-1 text-sm border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500">
+                                    <span class="font-semibold text-gray-800 min-w-[80px] text-right" x-text="formatMoney(netIsr)"></span>
+                                </div>
+                            </div>
+
                             <div class="border-t border-gray-300 my-2"></div>
                             <div class="flex justify-between items-center text-lg">
                                 <span class="font-bold text-gray-900">Total:</span>
@@ -261,12 +280,14 @@
             }));
 
             return {
+                // ✅ Inicializamos con el valor de la BD (o 0 si no existe)
+                porcentaje_isr: {{ old('porcentaje_isr', $cotizacion->porcentaje_isr ?? 0) }},
+
                 rows: partidasOld.length ? partidasOld : (partidasDb.length ? partidasDb : []),
 
                 // ✅ Función para crear una estructura de fila vacía
                 createEmptyRow() {
                     const uid = (window.crypto && crypto.randomUUID) ? ('tmp_' + crypto.randomUUID()) : ('tmp_' + Date.now());
-                    // Nota: el folio aquí es solo referencial inicial, el backend re-asignará el orden.
                     const maxFolio = this.rows.reduce((m, r) => Math.max(m, parseInt(r.folio || 0)), 0);
                     
                     return {
@@ -281,36 +302,30 @@
                     };
                 },
 
-                // Agregar al final (botón global)
+                // Agregar al final
                 addNewRow() {
                     this.rows.push(this.createEmptyRow());
                 },
 
-                // ✅ INSERTAR DEBAJO (Estilo Word)
+                // Insertar debajo
                 addRowAfter(index) {
-                    // Splice inserta en index + 1 (después de la actual)
-                    // (indice, cuantos borrar, elemento a insertar)
                     this.rows.splice(index + 1, 0, this.createEmptyRow());
                 },
 
-                // ✅ MOVER ARRIBA
+                // Mover Arriba
                 moveUp(index) {
                     if (index > 0) {
                         const item = this.rows[index];
-                        // 1. Quitar de la posición actual
                         this.rows.splice(index, 1);
-                        // 2. Insertar una posición antes
                         this.rows.splice(index - 1, 0, item);
                     }
                 },
 
-                // ✅ MOVER ABAJO
+                // Mover Abajo
                 moveDown(index) {
                     if (index < this.rows.length - 1) {
                         const item = this.rows[index];
-                        // 1. Quitar de la posición actual
                         this.rows.splice(index, 1);
-                        // 2. Insertar una posición después
                         this.rows.splice(index + 1, 0, item);
                     }
                 },
@@ -324,22 +339,34 @@
                 },
 
                 calculateLineTotal(row) {
-                    const cant = parseFloat(row.cantidad) || 0;
-                    const prec = parseFloat(row.precio_unitario) || 0;
-                    const iva  = parseFloat(row.iva) || 0;
+                    let cant = parseFloat(row.cantidad) || 0;
+                    let prec = parseFloat(row.precio_unitario) || 0;
+                    let iva  = parseFloat(row.iva) || 0;
                     return (cant * prec) + iva;
                 },
 
                 get netSubtotal() {
-                    return this.rows.reduce((sum, row) => sum + ((parseFloat(row.cantidad) || 0) * (parseFloat(row.precio_unitario) || 0)), 0);
+                    return this.rows.reduce((sum, row) => {
+                        return sum + (parseFloat(row.cantidad || 0) * parseFloat(row.precio_unitario || 0));
+                    }, 0);
                 },
 
                 get netIva() {
-                    return this.rows.reduce((sum, row) => sum + (parseFloat(row.iva) || 0), 0);
+                    return this.rows.reduce((sum, row) => {
+                        return sum + parseFloat(row.iva || 0);
+                    }, 0);
+                },
+
+                // ✅ PROPIEDAD ISR
+                get netIsr() {
+                    let subtotal = this.netSubtotal;
+                    let pct = parseFloat(this.porcentaje_isr) || 0;
+                    return subtotal * (pct / 100);
                 },
 
                 get netTotal() {
-                    return this.netSubtotal + this.netIva;
+                    // SUMAMOS: Subtotal + IVA + ISR
+                    return this.netSubtotal + this.netIva + this.netIsr;
                 },
 
                 formatMoney(amount) {

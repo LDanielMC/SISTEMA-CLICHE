@@ -373,7 +373,7 @@
             <div class="project-label">Proyecto</div>
             <div class="project-title">{{ $cotizacion->titulo_cotizacion }}</div>
             @if($cotizacion->texto_introduccion)
-                {{-- ✅ AQUI ESTA LA CORRECCIÓN: {!! nl2br(e(...)) !!} para respetar saltos de línea --}}
+                {{-- {!! nl2br(e(...)) !!} para respetar saltos de línea --}}
                 <div class="project-intro">
                     {!! nl2br(e($cotizacion->texto_introduccion)) !!}
                 </div>
@@ -411,7 +411,7 @@
             </tbody>
         </table>
 
-        <!-- 4. TOTALES -->
+        <!-- 4. TOTALES (Con ISR) -->
         <div class="clearfix">
             <div class="totals-box">
                 <table class="totals-table">
@@ -423,6 +423,16 @@
                         <td class="total-label">IVA Total</td>
                         <td class="total-number">${{ number_format($cotizacion->iva_total, 2) }}</td>
                     </tr>
+
+                    {{-- ✅ AQUI SE AGREGA LA FILA DE ISR --}}
+                    @if($cotizacion->porcentaje_isr > 0)
+                    <tr>
+                        {{-- '+ 0' elimina ceros decimales innecesarios (ej. 10.00 -> 10) --}}
+                        <td class="total-label">ISR ({{ $cotizacion->porcentaje_isr + 0 }}%)</td>
+                        <td class="total-number">${{ number_format($cotizacion->retencion_isr, 2) }}</td>
+                    </tr>
+                    @endif
+
                     <tr><td colspan="2" style="height: 5px;"></td></tr>
                     <tr class="grand-total-row">
                         <td>TOTAL</td>

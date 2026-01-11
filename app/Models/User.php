@@ -6,6 +6,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+// Importamos tu notificación personalizada de Cliché
+use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable
 {
@@ -46,6 +48,19 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Enviar la notificación de restablecimiento de contraseña.
+     * Sobrescribimos este método para usar nuestra notificación "ResetPasswordNotification"
+     * con el estilo de Cliché Marketing Digital.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
     public function empleado()
     {
         return $this->hasOne(Empleado::class, 'id_usuario');
@@ -55,5 +70,4 @@ class User extends Authenticatable
     {
         return $this->hasOne(Cliente::class, 'id_usuario');
     }
-
 }

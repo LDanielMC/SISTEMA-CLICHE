@@ -45,21 +45,30 @@
                             {{ __('Empleados') }}
                         </x-nav-link>
 
-                        <x-nav-link
-                            :href="route('clientes.index')"
-                            :active="request()->routeIs('clientes.*')"
-                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('clientes.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            {{ __('Clientes') }}
-                        </x-nav-link>
+                        {{-- Dropdown de Clientes (Incluye Cotizaciones) --}}
+                        <div class="relative sm:flex sm:items-center">
+                            <x-dropdown align="left" width="48">
+                                <x-slot name="trigger">
+                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ (request()->routeIs('clientes.*') || request()->routeIs('cotizaciones.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                                        <div>{{ __('Clientes') }}</div>
+                                        <div class="ms-1">
+                                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    </button>
+                                </x-slot>
 
-                        <x-nav-link
-                            :href="route('cotizaciones.index')"
-                            :active="request()->routeIs('cotizaciones.*')"
-                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('cotizaciones.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            {{ __('Cotizaciones') }}
-                        </x-nav-link>
+                                <x-slot name="content">
+                                    <x-dropdown-link :href="route('clientes.index')">
+                                        {{ __('Gestión de Clientes') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('cotizaciones.index')">
+                                        {{ __('Cotizaciones') }}
+                                    </x-dropdown-link>
+                                </x-slot>
+                            </x-dropdown>
+                        </div>
 
                     @endif
                 </div>
@@ -165,16 +174,18 @@
                     {{ __('Empleados') }}
                 </a>
 
+                {{-- Clientes en Móvil --}}
                 <a href="{{ route('clientes.index') }}"
                    class="block px-4 py-3 rounded-xl text-sm font-semibold
-                          {{ request()->routeIs('clientes.*') ? 'bg-white/80 border border-blue-100 text-[#0149a8] shadow-sm' : 'text-gray-700 hover:bg-white/70' }}">
-                    {{ __('Clientes') }}
+                          {{ request()->routeIs('clientes.index') ? 'bg-white/80 border border-blue-100 text-[#0149a8] shadow-sm' : 'text-gray-700 hover:bg-white/70' }}">
+                    {{ __('Clientes (Listado)') }}
                 </a>
 
+                {{-- Cotizaciones en Móvil (Indentado para jerarquía) --}}
                 <a href="{{ route('cotizaciones.index') }}"
-                   class="block px-4 py-3 rounded-xl text-sm font-semibold
-                          {{ request()->routeIs('cotizaciones.*') ? 'bg-white/80 border border-blue-100 text-[#0149a8] shadow-sm' : 'text-gray-700 hover:bg-white/70' }}">
-                    {{ __('Cotizaciones') }}
+                   class="block px-4 py-3 ml-4 rounded-xl text-sm font-semibold
+                          {{ request()->routeIs('cotizaciones.*') ? 'bg-white/80 border border-blue-100 text-[#0149a8] shadow-sm' : 'text-gray-600 hover:bg-white/70' }}">
+                    ↳ {{ __('Cotizaciones') }}
                 </a>
             @endif
         </div>

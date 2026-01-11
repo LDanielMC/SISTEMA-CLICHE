@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB; // <--- IMPORTANTE: Necesario para las transacciones
-
+use Illuminate\Support\Facades\Auth; // <--- Agregado para Auth::user()
+use Illuminate\Validation\ValidationException; // <--- Agregado para excepciones de validación
 
 class EmpleadoController extends Controller
 {
@@ -95,8 +96,6 @@ class EmpleadoController extends Controller
     {
         // Carga la vista de edición y le pasa el empleado que se quiere modificar.
         // La vista 'empleados.edit' usará los datos de $empleado para rellenar el formulario.
-        // Nota: Tu archivo se llama 'edit.balde.php', Laravel buscará 'edit.blade.php'. 
-        // Asegúrate de que el nombre del archivo sea correcto.
         return view('empleados.edit', compact('empleado'));
     }
 
@@ -127,17 +126,33 @@ class EmpleadoController extends Controller
                 'puesto'            => $request->puesto,
             ]);
 
-            // 3) Actualizar el LOGIN (Tabla Users)
+            // 3) Actualizar el LOGIN (Tabla Users) y enviar correo si cambió
             $user = $empleado->user;
-            // Solo si el correo cambió, lo actualizamos
+            
+            // Detectamos si el correo cambió
             if ($user->email !== $request->correo_contacto) {
+                
+                // VALIDACIÓN DE SEGURIDAD: Verificar contraseña de Admin si se proporciona
+                if ($request->filled('password_admin_confirmation')) {
+                    if (! Hash::check($request->password_admin_confirmation, Auth::user()->password)) {
+                        throw ValidationException::withMessages([
+                            'correo_contacto' => 'La contraseña de administrador es incorrecta. No se pudo actualizar el correo.',
+                        ]);
+                    }
+                }
+
+                // Actualizar correo
                 $user->email = $request->correo_contacto;
+                $user->email_verified_at = null; // Resetear verificación
                 $user->save();
+
+                // ---> ENVÍO AUTOMÁTICO DE RESET LINK <---
+                Password::sendResetLink(['email' => $user->email]);
             }
         });
 
         return redirect()->route('empleados.index')
-            ->with('success', 'Empleado y credenciales actualizados correctamente.');
+            ->with('success', 'Empleado actualizado correctamente. Si cambiaste el correo, se envió un enlace de acceso al nuevo email.');
     }
 
     
@@ -180,6 +195,7 @@ class EmpleadoController extends Controller
                   ->orWhere('apellido_paterno', 'LIKE', '%' . $query . '%')
                   ->orWhere('apellido_materno', 'LIKE', '%' . $query . '%')
                   ->orWhere('puesto', 'LIKE', '%' . $query . '%') // ¡Añadí 'puesto' a la búsqueda!
+                  ->orWhere('telefono', 'LIKE', '%' . $query . '%')
                   ->orWhereHas('user', function ($userQuery) use ($query) {
                       // Busca en la relación 'user' por el email
                       $userQuery->where('email', 'LIKE', '%' . $query . '%');
@@ -218,7 +234,4 @@ class EmpleadoController extends Controller
             ->with('success', 'Empleado reactivado correctamente.');
         }
     }
-
-
-
 }

@@ -128,5 +128,8 @@
 </div>
 
 <div class="mt-6">
-    {{ $cotizaciones->links() }}
+    {{-- FIX: Solo mostrar paginación si $cotizaciones es un Paginador, no una Colección --}}
+    @if(method_exists($cotizaciones, 'links'))
+        {{ $cotizaciones->links() }}
+    @endif
 </div>

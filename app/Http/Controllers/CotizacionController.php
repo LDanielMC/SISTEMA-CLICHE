@@ -45,6 +45,7 @@ class CotizacionController extends Controller
             'vencimiento_dias'  => 'required|integer|min:1',
             'texto_introduccion'=> 'nullable|string|max:1000',
             'estatus'           => 'required|in:pendiente,aceptada,rechazada',
+            'porcentaje_isr'    => 'nullable|numeric|min:0|max:100', // Campo validado
             
             'partidas'               => 'required|array|min:1',
             'partidas.*.titulo'      => 'required|string|max:100',
@@ -74,7 +75,7 @@ class CotizacionController extends Controller
 
                 $subtotalGeneral += $importeLinea;
                 $ivaGeneral      += $ivaItem;
-                $totalGeneral    += $totalLinea;
+                $totalGeneral    += $totalLinea; // Suma temporal (Subtotal + IVA)
 
                 $detallesData[] = [
                     'orden'           => $index,
@@ -87,6 +88,18 @@ class CotizacionController extends Controller
                 ];
             }
 
+            // ✅ CÁLCULO DEL ISR (SUMADO)
+            $porcentajeISR = floatval($request->input('porcentaje_isr', 0));
+            $montoISR      = 0;
+
+            if ($porcentajeISR > 0) {
+                // Calculamos el monto sobre el subtotal
+                $montoISR = $subtotalGeneral * ($porcentajeISR / 100);
+                
+                // CAMBIO: Ahora se SUMA al total (en lugar de restar)
+                $totalGeneral += $montoISR; 
+            }
+
             $cotizacion = Cotizacion::create([
                 'titulo_cotizacion' => $request->titulo_cotizacion,
                 'id_cliente'        => $request->id_cliente,
@@ -95,6 +108,8 @@ class CotizacionController extends Controller
                 'texto_introduccion'=> $request->texto_introduccion,
                 'subtotal'          => $subtotalGeneral,
                 'iva_total'         => $ivaGeneral,
+                'porcentaje_isr'    => $porcentajeISR,
+                'retencion_isr'     => $montoISR,  // Guardamos el monto (aunque lo llamamos retencion_isr en BD, aquí funciona como suma)
                 'total'             => $totalGeneral,
                 'notas'             => $request->notas,
                 'estatus'           => $request->estatus,
@@ -128,6 +143,7 @@ class CotizacionController extends Controller
             'vencimiento_dias'  => 'required|integer|min:1',
             'texto_introduccion'=> 'nullable|string|max:1000',
             'estatus'           => 'required|in:pendiente,aceptada,rechazada',
+            'porcentaje_isr'    => 'nullable|numeric|min:0|max:100',
 
             'partidas'                  => 'required|array|min:1',
             'partidas.*.id_detalle'     => 'nullable|integer',
@@ -184,6 +200,16 @@ class CotizacionController extends Controller
                 }
             }
 
+            // ✅ CÁLCULO DEL ISR (SUMADO) EN UPDATE
+            $porcentajeISR = floatval($request->input('porcentaje_isr', 0));
+            $montoISR      = 0;
+
+            if ($porcentajeISR > 0) {
+                $montoISR = $subtotalGeneral * ($porcentajeISR / 100);
+                // CAMBIO: Se SUMA al total
+                $totalGeneral += $montoISR; 
+            }
+
             // Borrar eliminados
             $cotizacion->detalles()
                 ->whereNotIn('id_detalle', $idsMantenidos)
@@ -198,6 +224,8 @@ class CotizacionController extends Controller
                 'texto_introduccion'=> $request->texto_introduccion,
                 'subtotal'          => $subtotalGeneral,
                 'iva_total'         => $ivaGeneral,
+                'porcentaje_isr'    => $porcentajeISR,
+                'retencion_isr'     => $montoISR, 
                 'total'             => $totalGeneral,
                 'notas'             => $request->notas,
                 'estatus'           => $request->estatus,
@@ -210,7 +238,12 @@ class CotizacionController extends Controller
 
     public function destroy(Cotizacion $cotizacion)
     {
+        // 1. PRIMERO eliminamos los detalles relacionados
+        $cotizacion->detalles()->delete();
+        
+        // 2. DESPUÉS eliminamos la cotización principal
         $cotizacion->delete();
+        
         return redirect()->route('cotizaciones.index')->with('success', 'Cotización eliminada.');
     }
 

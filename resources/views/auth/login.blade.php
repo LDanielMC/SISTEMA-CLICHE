@@ -26,7 +26,14 @@
                 </div>
 
                 {{-- Session Status --}}
-                <x-auth-session-status class="mb-4 text-sm" :status="session('status')" />
+                {{-- TRUCO: Interceptar el mensaje 'passwords.reset' y traducirlo manualmente aquí --}}
+                @php
+                    $status = session('status');
+                    if ($status === 'passwords.reset') {
+                        $status = '¡Tu contraseña ha sido restablecida exitosamente! Ya puedes entrar.';
+                    }
+                @endphp
+                <x-auth-session-status class="mb-4 text-sm" :status="$status" />
 
                 <form method="POST" action="{{ route('login') }}" class="space-y-4">
                     @csrf
@@ -63,7 +70,7 @@
 
                     {{-- Remember me --}}
                     <div class="flex items-center justify-between pt-1">
-                        <label for="remember_me" class="inline-flex items-center gap-2">
+                        {{--  <label for="remember_me" class="inline-flex items-center gap-2">
                             <input
                                 id="remember_me"
                                 type="checkbox"
@@ -71,12 +78,12 @@
                                 name="remember"
                             >
                             <span class="text-sm text-zinc-600">{{ __('Remember me') }}</span>
-                        </label>
+                        </label>  --}}
 
                         @if (Route::has('password.request'))
                             <a class="text-sm text-blue-900/70 hover:text-blue-900 underline underline-offset-4"
                                href="{{ route('password.request') }}">
-                                {{ __('Forgot your password?') }}
+                                {{ __('¿Olvidaste tu contraseña?') }}
                             </a>
                         @endif
                     </div>
@@ -87,7 +94,7 @@
                             type="submit"
                             class="group w-full flex justify-center items-center py-3.5 bg-[#004481] text-white rounded-xl hover:bg-[#003366] transition shadow-lg font-medium tracking-wide text-sm"
                         >
-                            <span>{{ __('Log in') }}</span>
+                            <span>{{ __('Ingresar') }}</span>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                  stroke-width="1.5" stroke="currentColor"
                                  class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform">

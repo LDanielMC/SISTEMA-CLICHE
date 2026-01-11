@@ -225,6 +225,22 @@
                                 <span class="text-gray-600">IVA Total:</span>
                                 <span class="font-semibold text-gray-800" x-text="formatMoney(netIva)"></span>
                             </div>
+                            
+                            {{-- NUEVO: Campo ISR --}}
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="porcentaje_isr" class="text-gray-600 text-sm font-medium">ISR (+%):</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" 
+                                           name="porcentaje_isr" 
+                                           id="porcentaje_isr"
+                                           x-model="porcentaje_isr" 
+                                           min="0" max="100" step="0.01" 
+                                           placeholder="0"
+                                           class="w-20 text-right p-1 text-sm border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500">
+                                    <span class="font-semibold text-gray-800 min-w-[80px] text-right" x-text="formatMoney(netIsr)"></span>
+                                </div>
+                            </div>
+
                             <div class="border-t border-gray-300 my-2"></div>
                             <div class="flex justify-between items-center text-lg">
                                 <span class="font-bold text-gray-900">Total:</span>
@@ -252,6 +268,9 @@
             const partidasOld = @json(old('partidas'));
 
             return {
+                // Iniciar variable de ISR con lo que traiga el old, o 0
+                porcentaje_isr: {{ old('porcentaje_isr', 0) }},
+
                 // Si hay old('partidas'), lo usamos.
                 // Si no, iniciamos con UNA fila vacía.
                 rows: partidasOld && partidasOld.length ? partidasOld : [
@@ -332,8 +351,16 @@
                     }, 0);
                 },
 
+                // Nueva propiedad computada para el ISR
+                get netIsr() {
+                    let subtotal = this.netSubtotal;
+                    let pct = parseFloat(this.porcentaje_isr) || 0;
+                    return subtotal * (pct / 100);
+                },
+
                 get netTotal() {
-                    return this.netSubtotal + this.netIva;
+                    // SUMAMOS Subtotal + IVA + ISR
+                    return this.netSubtotal + this.netIva + this.netIsr;
                 },
 
                 formatMoney(amount) {
