@@ -109,7 +109,80 @@
             </div>
 
             <!-- Settings Dropdown (Perfil de Usuario) -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-6 gap-3">
+                
+                {{-- Campanita de Notificaciones --}}
+                <div x-data="notificaciones()" x-init="init()" class="relative">
+                    <button @click="toggleDropdown()" 
+                            class="relative inline-flex items-center px-3 py-2 rounded-xl bg-white/60 hover:bg-white/80 border border-blue-100 shadow-sm text-[#0149a8] hover:text-[#00337a] focus:outline-none transition ease-in-out duration-150">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span x-show="noLeidasCount > 0" 
+                              x-text="noLeidasCount"
+                              class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full min-w-[20px]">
+                        </span>
+                    </button>
+
+                    {{-- Dropdown de notificaciones --}}
+                    <div x-show="dropdownOpen" 
+                         @click.away="dropdownOpen = false"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[600px] overflow-hidden flex flex-col"
+                         style="display: none;">
+                        
+                        {{-- Header --}}
+                        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                            <h3 class="text-sm font-bold text-gray-900">Notificaciones</h3>
+                            <button @click="marcarTodasLeidas()" 
+                                    x-show="noLeidasCount > 0"
+                                    class="text-xs text-blue-600 hover:text-blue-800 font-semibold">
+                                Marcar todas como leídas
+                            </button>
+                        </div>
+
+                        {{-- Lista de notificaciones --}}
+                        <div class="overflow-y-auto flex-1" style="max-height: 500px;">
+                            <template x-if="notificaciones.length === 0">
+                                <div class="px-4 py-8 text-center">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                    </svg>
+                                    <p class="mt-2 text-sm text-gray-500">No tienes notificaciones</p>
+                                </div>
+                            </template>
+
+                            <template x-for="notif in notificaciones" :key="notif.id">
+                                <div @click="clickNotificacion(notif)"
+                                     :class="!notif.leida ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-gray-50'"
+                                     class="px-4 py-3 border-b border-gray-100 cursor-pointer transition">
+                                    <div class="flex items-start gap-3">
+                                        <div class="flex-shrink-0 mt-1">
+                                            <span x-text="getIcono(notif.tipo)" class="text-2xl"></span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold text-gray-900" x-text="notif.titulo"></p>
+                                            <p class="text-xs text-gray-600 mt-1" x-text="notif.mensaje"></p>
+                                            <p class="text-xs text-gray-400 mt-1" x-text="formatearFecha(notif.created_at)"></p>
+                                        </div>
+                                        <button @click.stop="eliminarNotificacion(notif.id)"
+                                                class="flex-shrink-0 text-gray-400 hover:text-red-600 transition">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center gap-3 px-3 py-2 rounded-xl
@@ -247,3 +320,188 @@
         </div>
     </div>
 </nav>
+
+@push('scripts')
+<script>
+    function notificaciones() {
+        return {
+            notificaciones: [],
+            noLeidasCount: 0,
+            dropdownOpen: false,
+            
+            init() {
+                this.cargarNotificaciones();
+                // Actualizar cada 30 segundos
+                setInterval(() => {
+                    this.cargarNoLeidas();
+                }, 30000);
+            },
+            
+            async cargarNotificaciones() {
+                try {
+                    const response = await fetch('/notificaciones', {
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    const data = await response.json();
+                    this.notificaciones = data;
+                    this.noLeidasCount = data.filter(n => !n.leida).length;
+                } catch (error) {
+                    console.error('Error al cargar notificaciones:', error);
+                }
+            },
+            
+            async cargarNoLeidas() {
+                try {
+                    const response = await fetch('/notificaciones/no-leidas', {
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    const data = await response.json();
+                    this.noLeidasCount = data.count;
+                    
+                    // Si hay nuevas notificaciones, recargar la lista
+                    if (data.count > this.notificaciones.filter(n => !n.leida).length) {
+                        this.cargarNotificaciones();
+                    }
+                } catch (error) {
+                    console.error('Error al cargar contador:', error);
+                }
+            },
+            
+            toggleDropdown() {
+                this.dropdownOpen = !this.dropdownOpen;
+                if (this.dropdownOpen) {
+                    this.cargarNotificaciones();
+                }
+            },
+            
+            async clickNotificacion(notif) {
+                console.log('Click en notificación:', notif);
+                
+                // Marcar como leída
+                if (!notif.leida) {
+                    await this.marcarLeida(notif.id);
+                }
+                
+                // Redirigir según el tipo de usuario y notificación
+                const userRol = '{{ auth()->user()->rol }}';
+                console.log('Rol del usuario:', userRol);
+                
+                if (userRol === 'administrador' || userRol === 'admin') {
+                    // Admin: ir al tablero kanban del empleado
+                    if (notif.asignacion_tarea && notif.asignacion_tarea.empleado) {
+                        const empleadoId = notif.asignacion_tarea.empleado.id_empleado;
+                        console.log('Redirigiendo a empleado:', empleadoId);
+                        window.location.href = `/asignaciones/empleado/${empleadoId}`;
+                    } else {
+                        console.error('No se encontró información del empleado en la notificación');
+                        window.location.href = '/asignaciones';
+                    }
+                } else if (userRol === 'empleado') {
+                    // Empleado: ir a mis tareas
+                    console.log('Redirigiendo a mis tareas');
+                    window.location.href = '/mis-tareas';
+                } else {
+                    console.error('Rol no reconocido:', userRol);
+                }
+            },
+            
+            async marcarLeida(id) {
+                try {
+                    await fetch(`/notificaciones/${id}/marcar-leida`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
+                    // Actualizar localmente
+                    const notif = this.notificaciones.find(n => n.id === id);
+                    if (notif) {
+                        notif.leida = true;
+                        this.noLeidasCount = Math.max(0, this.noLeidasCount - 1);
+                    }
+                } catch (error) {
+                    console.error('Error al marcar como leída:', error);
+                }
+            },
+            
+            async marcarTodasLeidas() {
+                try {
+                    await fetch('/notificaciones/marcar-todas-leidas', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
+                    // Actualizar localmente
+                    this.notificaciones.forEach(n => n.leida = true);
+                    this.noLeidasCount = 0;
+                } catch (error) {
+                    console.error('Error al marcar todas como leídas:', error);
+                }
+            },
+            
+            async eliminarNotificacion(id) {
+                try {
+                    await fetch(`/notificaciones/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
+                    // Remover localmente
+                    const index = this.notificaciones.findIndex(n => n.id === id);
+                    if (index !== -1) {
+                        if (!this.notificaciones[index].leida) {
+                            this.noLeidasCount = Math.max(0, this.noLeidasCount - 1);
+                        }
+                        this.notificaciones.splice(index, 1);
+                    }
+                } catch (error) {
+                    console.error('Error al eliminar notificación:', error);
+                }
+            },
+            
+            getIcono(tipo) {
+                const iconos = {
+                    'tarea_asignada': '📋',
+                    'tarea_en_proceso': '⚙️',
+                    'tarea_terminada': '✅',
+                    'tarea_evaluada_completa': '🎉',
+                    'tarea_evaluada_parcial': '⚠️',
+                    'tarea_evaluada_incompleta': '❌',
+                    'tarea_evaluada': '📊'
+                };
+                return iconos[tipo] || '🔔';
+            },
+            
+            formatearFecha(fecha) {
+                const date = new Date(fecha);
+                const ahora = new Date();
+                const diff = Math.floor((ahora - date) / 1000); // segundos
+                
+                if (diff < 60) return 'Ahora';
+                if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
+                if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} h`;
+                if (diff < 604800) return `Hace ${Math.floor(diff / 86400)} días`;
+                
+                return date.toLocaleDateString('es-MX', { 
+                    day: 'numeric', 
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        }
+    }
+</script>
+@endpush

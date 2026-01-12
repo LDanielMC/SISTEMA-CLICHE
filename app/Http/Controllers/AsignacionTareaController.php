@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AsignacionTarea;
 use App\Models\Tarea;
 use App\Models\Empleado;
+use App\Models\Notificacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -84,7 +85,20 @@ class AsignacionTareaController extends Controller
             'fecha_limite.after_or_equal' => 'La fecha límite no puede ser anterior a hoy.',
         ]);
 
-        AsignacionTarea::create($validated);
+        $asignacion = AsignacionTarea::create($validated);
+
+        $empleado = Empleado::find($validated['empleado_id']);
+        $tarea = Tarea::find($validated['tarea_id']);
+
+        if ($empleado && $empleado->id_usuario) {
+            Notificacion::create([
+                'user_id' => $empleado->id_usuario,
+                'asignacion_tarea_id' => $asignacion->id,
+                'tipo' => 'tarea_asignada',
+                'titulo' => 'Nueva tarea asignada',
+                'mensaje' => "Se te ha asignado la tarea: {$tarea->titulo}",
+            ]);
+        }
 
         return redirect()->route('asignaciones.index')->with('success', 'Tarea asignada exitosamente.');
     }
@@ -115,7 +129,28 @@ class AsignacionTareaController extends Controller
             'estado_empleado' => 'required|in:asignada,en_proceso,terminada',
         ]);
 
+        $estadoAnterior = $asignacion->estado_empleado;
         $asignacion->update($validated);
+
+        if ($estadoAnterior !== $validated['estado_empleado'] && in_array($validated['estado_empleado'], ['en_proceso', 'terminada'])) {
+            $adminUsers = \App\Models\User::where('rol', 'administrador')->get();
+            
+            $tipo = $validated['estado_empleado'] === 'en_proceso' ? 'tarea_en_proceso' : 'tarea_terminada';
+            $titulo = $validated['estado_empleado'] === 'en_proceso' ? 'Tarea en proceso' : 'Tarea terminada';
+            $empleadoNombre = $asignacion->empleado->nombre . ' ' . $asignacion->empleado->apellido_paterno;
+            $mensaje = "{$empleadoNombre} ha marcado la tarea '{$asignacion->tarea->titulo}' como " . 
+                      ($validated['estado_empleado'] === 'en_proceso' ? 'en proceso' : 'terminada');
+
+            foreach ($adminUsers as $admin) {
+                Notificacion::create([
+                    'user_id' => $admin->id,
+                    'asignacion_tarea_id' => $asignacion->id,
+                    'tipo' => $tipo,
+                    'titulo' => $titulo,
+                    'mensaje' => $mensaje,
+                ]);
+            }
+        }
 
         return response()->json(['success' => true, 'message' => 'Estado actualizado correctamente.']);
     }
@@ -142,7 +177,39 @@ class AsignacionTareaController extends Controller
             'estado_empleado' => 'terminada',
         ]);
 
+        $adminUsers = \App\Models\User::where('rol', 'administrador')
+            ->orWhere('rol', 'admin')
+            ->get();
+        
+        $empleadoNombre = $asignacion->empleado->nombre . ' ' . $asignacion->empleado->apellido_paterno;
+        $mensaje = "{$empleadoNombre} ha subido evidencia y marcado la tarea '{$asignacion->tarea->titulo}' como terminada";
+
+        foreach ($adminUsers as $admin) {
+            Notificacion::create([
+                'user_id' => $admin->id,
+                'asignacion_tarea_id' => $asignacion->id,
+                'tipo' => 'tarea_terminada',
+                'titulo' => 'Tarea terminada',
+                'mensaje' => $mensaje,
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Evidencia subida exitosamente. Tarea marcada como terminada.');
+    }
+
+    public function eliminarEvidencia(AsignacionTarea $asignacion)
+    {
+        if ($asignacion->evidencia_path && Storage::exists($asignacion->evidencia_path)) {
+            Storage::delete($asignacion->evidencia_path);
+        }
+
+        $asignacion->update([
+            'evidencia_path' => null,
+            'fecha_entrega' => null,
+            'estado_empleado' => 'en_proceso',
+        ]);
+
+        return redirect()->back()->with('success', 'Evidencia eliminada. La tarea ha sido movida a "En Proceso".');
     }
 
     public function tareasEmpleado(Empleado $empleado)
@@ -167,7 +234,38 @@ class AsignacionTareaController extends Controller
             'notas_admin' => 'nullable|string',
         ]);
 
+        $estadoAnterior = $asignacion->estado_admin;
         $asignacion->update($validated);
+
+        if ($estadoAnterior !== $validated['estado_admin'] && $asignacion->empleado && $asignacion->empleado->id_usuario) {
+            $estadosTexto = [
+                'pendiente' => 'pendiente de revisión',
+                'completa' => 'completa',
+                'parcialmente_completa' => 'parcialmente completa',
+                'incompleta' => 'incompleta',
+            ];
+
+            $tipoNotificacion = match($validated['estado_admin']) {
+                'completa' => 'tarea_evaluada_completa',
+                'parcialmente_completa' => 'tarea_evaluada_parcial',
+                'incompleta' => 'tarea_evaluada_incompleta',
+                default => 'tarea_evaluada',
+            };
+
+            $mensaje = "El administrador ha evaluado tu tarea '{$asignacion->tarea->titulo}' como {$estadosTexto[$validated['estado_admin']]}";
+            
+            if (!empty($validated['notas_admin'])) {
+                $mensaje .= ". Notas: {$validated['notas_admin']}";
+            }
+
+            Notificacion::create([
+                'user_id' => $asignacion->empleado->id_usuario,
+                'asignacion_tarea_id' => $asignacion->id,
+                'tipo' => $tipoNotificacion,
+                'titulo' => 'Tarea evaluada',
+                'mensaje' => $mensaje,
+            ]);
+        }
 
         return response()->json(['success' => true, 'message' => 'Evaluación actualizada correctamente.']);
     }
