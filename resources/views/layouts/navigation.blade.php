@@ -114,13 +114,13 @@
                 {{-- Campanita de Notificaciones --}}
                 <div x-data="notificaciones()" x-init="init()" class="relative">
                     <button @click="toggleDropdown()" 
-                            class="relative inline-flex items-center px-3 py-2 rounded-xl bg-white/60 hover:bg-white/80 border border-blue-100 shadow-sm text-[#0149a8] hover:text-[#00337a] focus:outline-none transition ease-in-out duration-150">
+                            class="campanita-notificaciones relative inline-flex items-center px-3 py-2 rounded-xl bg-white/60 hover:bg-white/80 border border-blue-100 shadow-sm text-[#0149a8] hover:text-[#00337a] focus:outline-none transition ease-in-out duration-150">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                         </svg>
                         <span x-show="noLeidasCount > 0" 
                               x-text="noLeidasCount"
-                              class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full min-w-[20px]">
+                              class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full min-w-[20px] animate-pulse">
                         </span>
                     </button>
 
@@ -331,10 +331,14 @@
             
             init() {
                 this.cargarNotificaciones();
-                // Actualizar cada 30 segundos
+                // Polling inteligente cada 5 segundos
                 setInterval(() => {
                     this.cargarNoLeidas();
-                }, 30000);
+                    // Si el dropdown está abierto, actualizar la lista también
+                    if (this.dropdownOpen) {
+                        this.cargarNotificaciones();
+                    }
+                }, 5000);
             },
             
             async cargarNotificaciones() {
@@ -360,15 +364,46 @@
                         }
                     });
                     const data = await response.json();
+                    const countAnterior = this.noLeidasCount;
                     this.noLeidasCount = data.count;
                     
-                    // Si hay nuevas notificaciones, recargar la lista
-                    if (data.count > this.notificaciones.filter(n => !n.leida).length) {
+                    // Si hay nuevas notificaciones, recargar la lista y mostrar animación
+                    if (data.count > countAnterior) {
                         this.cargarNotificaciones();
+                        this.animarCampanita();
+                        this.mostrarToastNuevaNotificacion();
                     }
                 } catch (error) {
                     console.error('Error al cargar contador:', error);
                 }
+            },
+            
+            animarCampanita() {
+                const campanita = document.querySelector('.campanita-notificaciones');
+                if (campanita) {
+                    campanita.classList.add('animate-bounce');
+                    setTimeout(() => {
+                        campanita.classList.remove('animate-bounce');
+                    }, 1000);
+                }
+            },
+            
+            mostrarToastNuevaNotificacion() {
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-xl z-[70] flex items-center animate-slide-in';
+                toast.innerHTML = `
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                    </svg>
+                    <span>Nueva notificación recibida</span>
+                `;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100px)';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
             },
             
             toggleDropdown() {
