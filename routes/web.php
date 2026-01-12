@@ -7,6 +7,7 @@ use App\Http\Controllers\CotizacionController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\TareaController;
 use App\Http\Controllers\AsignacionTareaController;
+use App\Http\Controllers\NotificacionController;
 // use App\Http\Controllers\ProfileController; // <-- YA NO LO NECESITAMOS
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -93,6 +94,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mis-tareas', [AsignacionTareaController::class, 'misTareas'])->name('asignaciones.misTareas');
     Route::post('/mis-tareas/{asignacion}/actualizar-estado', [AsignacionTareaController::class, 'actualizarEstadoEmpleado'])->name('asignaciones.actualizarEstadoEmpleado');
     Route::post('/mis-tareas/{asignacion}/subir-evidencia', [AsignacionTareaController::class, 'subirEvidencia'])->name('asignaciones.subirEvidencia');
+    Route::delete('/mis-tareas/{asignacion}/eliminar-evidencia', [AsignacionTareaController::class, 'eliminarEvidencia'])->name('asignaciones.eliminarEvidencia');
+
+    // NOTIFICACIONES
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
+    Route::get('/notificaciones/no-leidas', [NotificacionController::class, 'noLeidas'])->name('notificaciones.noLeidas');
+    Route::post('/notificaciones/{notificacion}/marcar-leida', [NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarLeida');
+    Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasComoLeidas'])->name('notificaciones.marcarTodasLeidas');
+    Route::delete('/notificaciones/{notificacion}', [NotificacionController::class, 'eliminar'])->name('notificaciones.eliminar');
 });
 
 require __DIR__.'/auth.php';
