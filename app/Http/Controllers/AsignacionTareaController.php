@@ -133,7 +133,9 @@ class AsignacionTareaController extends Controller
         $asignacion->update($validated);
 
         if ($estadoAnterior !== $validated['estado_empleado'] && in_array($validated['estado_empleado'], ['en_proceso', 'terminada'])) {
-            $adminUsers = \App\Models\User::where('rol', 'administrador')->get();
+            $adminUsers = \App\Models\User::where('rol', 'administrador')
+                ->orWhere('rol', 'admin')
+                ->get();
             
             $tipo = $validated['estado_empleado'] === 'en_proceso' ? 'tarea_en_proceso' : 'tarea_terminada';
             $titulo = $validated['estado_empleado'] === 'en_proceso' ? 'Tarea en proceso' : 'Tarea terminada';
