@@ -7,6 +7,8 @@ use App\Http\Controllers\CotizacionController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\TareaController;
 use App\Http\Controllers\AsignacionTareaController;
+use App\Http\Controllers\PublicacionController;
+use App\Http\Controllers\CalendarioConfigController;
 use App\Http\Controllers\NotificacionController;
 // use App\Http\Controllers\ProfileController; // <-- YA NO LO NECESITAMOS
 use Illuminate\Support\Facades\Route;
@@ -17,7 +19,6 @@ Route::get('/', function () {
 });
 
 // --- 1. RUTA DASHBOARD GENÉRICA (FALLBACK) ---
-// Es necesaria por si el login intenta redirigir aquí por defecto
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -29,8 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if (Auth::user()->rol !== 'empleado') {
             abort(403, 'No autorizado.');
         }
-        // CAMBIO AQUÍ: Apuntamos a la carpeta 'portal_empleado'
-        return view('portal_empleado.dashboard'); 
+        return view('portal_empleado.dashboard');
     })->name('empleado.dashboard');
 });
 
@@ -41,14 +41,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if (Auth::user()->rol !== 'cliente') {
             abort(403, 'No autorizado.');
         }
-        // CAMBIO AQUÍ: Apuntamos a la carpeta 'portal_cliente'
-        return view('portal_cliente.dashboard'); 
+        return view('portal_cliente.dashboard');
     })->name('cliente.dashboard');
 });
 
+
 // --- 4. RUTAS SOLO PARA ADMIN ---
 Route::middleware(['auth', 'admin'])->group(function () {
-    
+
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
         ->name('admin.dashboard');
 
@@ -86,7 +86,29 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/asignaciones/search-empleados', [AsignacionTareaController::class, 'searchEmpleados'])->name('asignaciones.searchEmpleados');
     Route::get('/asignaciones/empleado/{empleado}', [AsignacionTareaController::class, 'tareasEmpleado'])->name('asignaciones.tareasEmpleado');
     Route::post('/asignaciones/{asignacion}/actualizar-estado-admin', [AsignacionTareaController::class, 'actualizarEstadoAdmin'])->name('asignaciones.actualizarEstadoAdmin');
+
+    // --- CALENDARIO DE PUBLICACIONES ---
+
+    // 1. Calendario General
+    Route::get('/calendario', [PublicacionController::class, 'index'])->name('calendario.general');
+
+    // 2. Gestión por cliente (ID opcional en URL)
+    Route::get('/calendario/gestion/{cliente_id?}', [PublicacionController::class, 'gestionCliente'])->name('calendario.gestion');
+
+    // 3. CRUD Publicaciones
+    Route::post('/publicaciones/masivo', [PublicacionController::class, 'storeMasivo'])->name('publicaciones.storeMasivo');
+    Route::post('/publicaciones', [PublicacionController::class, 'store'])->name('publicaciones.store');
+    Route::put('/publicaciones/{idPublicacion}', [PublicacionController::class, 'update'])->name('publicaciones.update');
+    Route::delete('/publicaciones/{idPublicacion}', [PublicacionController::class, 'destroy'])->name('publicaciones.destroy');
+
+    // 4. CONFIGURACIÓN (Plataformas y Formatos)
+    Route::get('/calendario/configuracion', [CalendarioConfigController::class, 'index'])->name('calendario.config');
+    Route::post('/calendario/plataformas', [CalendarioConfigController::class, 'storePlataforma'])->name('plataformas.store');
+    Route::delete('/calendario/plataformas/{id}', [CalendarioConfigController::class, 'destroyPlataforma'])->name('plataformas.destroy');
+    Route::post('/calendario/formatos', [CalendarioConfigController::class, 'storeFormato'])->name('formatos.store');
+    Route::delete('/calendario/formatos/{id}', [CalendarioConfigController::class, 'destroyFormato'])->name('formatos.destroy');
 });
+
 
 // Rutas para empleados autenticados
 Route::middleware(['auth'])->group(function () {
