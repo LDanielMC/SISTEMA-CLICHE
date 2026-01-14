@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('notificaciones', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('asignacion_tarea_id')->constrained('asignaciones_tareas')->onDelete('cascade');
-            $table->enum('tipo', ['tarea_asignada', 'tarea_en_proceso', 'tarea_terminada', 'tarea_evaluada', 'tarea_evaluada_completa', 'tarea_evaluada_parcial', 'tarea_evaluada_incompleta']);
+            $table->foreignId('asignacion_tarea_id')->nullable()->constrained('asignaciones_tareas')->onDelete('cascade');
+            $table->enum('tipo', ['tarea_asignada', 'tarea_en_proceso', 'tarea_terminada', 'tarea_evaluada', 'tarea_evaluada_completa', 'tarea_evaluada_parcial', 'tarea_evaluada_incompleta', 'recordatorio_evento']);
             $table->string('titulo');
             $table->text('mensaje');
             $table->boolean('leida')->default(false);

@@ -47,6 +47,7 @@ class Notificacion extends Model
             'tarea_evaluada_parcial' => '⚠️',
             'tarea_evaluada_incompleta' => '❌',
             'tarea_evaluada' => '📊',
+            'recordatorio_evento' => '🔔',
             default => '🔔',
         };
     }
@@ -61,6 +62,7 @@ class Notificacion extends Model
             'tarea_evaluada_parcial' => 'yellow',
             'tarea_evaluada_incompleta' => 'red',
             'tarea_evaluada' => 'blue',
+            'recordatorio_evento' => 'purple',
             default => 'gray',
         };
     }
