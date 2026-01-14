@@ -94,6 +94,14 @@
                             {{ __('Asignaciones') }}
                         </x-nav-link>
 
+                        <x-nav-link
+                            :href="route('eventos.index')"
+                            :active="request()->routeIs('eventos.*')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('eventos.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            📅 {{ __('Calendario') }}
+                        </x-nav-link>
+
                     @endif
 
                     @if(auth()->user()->rol == 'empleado')

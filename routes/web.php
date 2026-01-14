@@ -102,6 +102,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notificaciones/{notificacion}/marcar-leida', [NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarLeida');
     Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasComoLeidas'])->name('notificaciones.marcarTodasLeidas');
     Route::delete('/notificaciones/{notificacion}', [NotificacionController::class, 'eliminar'])->name('notificaciones.eliminar');
+
+    // CALENDARIO/AGENDA
+    Route::resource('eventos', \App\Http\Controllers\EventoController::class);
+    Route::get('/calendario/eventos', [\App\Http\Controllers\EventoController::class, 'calendario'])->name('eventos.calendario');
+    Route::get('/google/auth', [\App\Http\Controllers\EventoController::class, 'googleAuth'])->name('google.auth');
+    Route::get('/google/callback', [\App\Http\Controllers\EventoController::class, 'googleCallback'])->name('google.callback');
+    Route::get('/google/status', [\App\Http\Controllers\EventoController::class, 'googleStatus'])->name('google.status');
 });
 
 require __DIR__.'/auth.php';
