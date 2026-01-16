@@ -17,8 +17,10 @@ return new class extends Migration
 
                 // 2. Relaciones (Foreign Keys)
                 // Relación con Cliente
-                $table->foreignId('cliente_id')
-                    ->constrained('clientes') // Asegúrate que tu tabla se llame 'clientes'
+                $table->unsignedBigInteger('cliente_id');
+                $table->foreign('cliente_id')
+                    ->references('id_cliente')
+                    ->on('clientes')
                     ->onDelete('cascade');
                 
                 // Relación con Plataforma (idPlataforma)

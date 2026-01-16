@@ -17,10 +17,53 @@ class EventoController extends Controller
 {
     public function index(Request $request)
     {
-        $eventos = Evento::with(['cliente', 'creador', 'participantes', 'recordatorios'])
+        $hoy = now();
+        $finRango = now()->addMonths(3); // Mostrar próximos 3 meses
+        
+        // Obtener eventos que caen en el rango o que son recurrentes
+        $eventosDB = Evento::with(['cliente', 'creador', 'participantes', 'recordatorios'])
             ->where('creado_por', auth()->id())
-            ->proximos()
+            ->where(function($query) use ($hoy, $finRango) {
+                // Eventos normales futuros
+                $query->where(function($q) use ($hoy, $finRango) {
+                    $q->where('recurrencia', 'ninguna')
+                      ->whereBetween('fecha', [$hoy->format('Y-m-d'), $finRango->format('Y-m-d')]);
+                })
+                // O eventos recurrentes activos
+                ->orWhere(function($q) use ($hoy) {
+                    $q->where('recurrencia', '!=', 'ninguna')
+                      ->where(function($sq) use ($hoy) {
+                          $sq->whereNull('recurrencia_hasta')
+                             ->orWhere('recurrencia_hasta', '>=', $hoy->format('Y-m-d'));
+                      });
+                });
+            })
+            ->orderBy('fecha', 'asc')
             ->get();
+
+        // Expandir eventos recurrentes
+        $eventosExpandidos = collect();
+        
+        foreach ($eventosDB as $evento) {
+            if ($evento->recurrencia === 'ninguna') {
+                // Evento simple - agregar directamente
+                $eventosExpandidos->push($evento);
+            } else {
+                // Evento recurrente - generar próximas ocurrencias
+                $ocurrencias = $this->expandirRecurrencia($evento, $hoy, $finRango);
+                
+                foreach ($ocurrencias as $fechaOcurrencia) {
+                    // Clonar el evento y ajustar la fecha
+                    $eventoClonado = clone $evento;
+                    $eventoClonado->fecha = $fechaOcurrencia;
+                    $eventoClonado->es_recurrente = true;
+                    $eventosExpandidos->push($eventoClonado);
+                }
+            }
+        }
+
+        // Ordenar por fecha y limitar a los primeros 20
+        $eventos = $eventosExpandidos->sortBy('fecha')->take(20);
 
         $clientes = Cliente::where('estatus', 'activo')->orderBy('nombre')->get();
         $empleados = Empleado::where('estatus', 'activo')->orderBy('nombre')->get();
@@ -160,7 +203,6 @@ class EventoController extends Controller
             'participantes.*.nombre' => 'required|string',
             'participantes.*.correo' => 'required|email',
             'recordatorios' => 'nullable|array',
-            'recordatorios.*.tipo_notificacion' => 'required|in:correo,sistema,ambos',
             'recordatorios.*.minutos_antes' => 'required|integer|min:1',
         ]);
 
@@ -196,7 +238,7 @@ class EventoController extends Controller
                 foreach ($validated['recordatorios'] as $recordatorio) {
                     EventoRecordatorio::create([
                         'evento_id' => $evento->id,
-                        'tipo_notificacion' => $recordatorio['tipo_notificacion'],
+                        'tipo_notificacion' => 'sistema',
                         'minutos_antes' => $recordatorio['minutos_antes'],
                     ]);
                 }
@@ -236,29 +278,94 @@ class EventoController extends Controller
             'titulo' => 'required|string|max:255',
             'cliente_id' => 'nullable|exists:clientes,id_cliente',
             'fecha' => 'required|date',
-            'hora_inicio' => 'required|date_format:H:i',
-            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+            'hora_inicio' => 'required',
+            'hora_fin' => 'required',
             'lugar' => 'nullable|string|max:255',
             'notas' => 'nullable|string',
             'color' => 'nullable|string|max:7',
+            'recurrencia' => 'nullable|in:ninguna,diaria,semanal,mensual,anual',
+            'recurrencia_hasta' => 'nullable|date|after_or_equal:fecha',
+            'participantes' => 'nullable|array',
+            'participantes.*.tipo' => 'nullable|in:cliente,empleado,externo',
+            'participantes.*.referencia_id' => 'nullable|integer',
+            'participantes.*.nombre' => 'nullable|string',
+            'participantes.*.correo' => 'nullable|email',
+            'recordatorios' => 'nullable|array',
+            'recordatorios.*.minutos_antes' => 'nullable|integer|min:1',
         ]);
 
-        $evento->update($validated);
-
-        // Sincronizar con Google Calendar
+        DB::beginTransaction();
         try {
-            $googleService = new GoogleCalendarService();
-            if ($googleService->isAuthenticated() && $evento->google_event_id) {
-                $googleService->updateEvent($evento);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error al actualizar en Google Calendar: ' . $e->getMessage());
-        }
+            // Actualizar datos básicos del evento
+            $evento->update([
+                'titulo' => $validated['titulo'],
+                'cliente_id' => $validated['cliente_id'] ?? null,
+                'fecha' => $validated['fecha'],
+                'hora_inicio' => $validated['hora_inicio'],
+                'hora_fin' => $validated['hora_fin'],
+                'lugar' => $validated['lugar'] ?? null,
+                'notas' => $validated['notas'] ?? null,
+                'color' => $validated['color'] ?? '#3B82F6',
+                'recurrencia' => $validated['recurrencia'],
+                'recurrencia_hasta' => $validated['recurrencia_hasta'] ?? null,
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'evento' => $evento->load(['cliente', 'participantes', 'recordatorios'])
-        ]);
+            // Eliminar participantes existentes y crear nuevos
+            $evento->participantes()->delete();
+            if (isset($validated['participantes']) && is_array($validated['participantes'])) {
+                foreach ($validated['participantes'] as $participante) {
+                    // Solo crear si tiene datos válidos
+                    if (isset($participante['tipo']) && isset($participante['nombre']) && isset($participante['correo'])) {
+                        EventoParticipante::create([
+                            'evento_id' => $evento->id,
+                            'tipo' => $participante['tipo'],
+                            'referencia_id' => $participante['referencia_id'] ?? null,
+                            'nombre' => $participante['nombre'],
+                            'correo' => $participante['correo'],
+                        ]);
+                    }
+                }
+            }
+
+            // Eliminar recordatorios existentes y crear nuevos
+            $evento->recordatorios()->delete();
+            if (isset($validated['recordatorios']) && is_array($validated['recordatorios'])) {
+                foreach ($validated['recordatorios'] as $recordatorio) {
+                    // Solo crear si tiene minutos_antes válido
+                    if (isset($recordatorio['minutos_antes'])) {
+                        EventoRecordatorio::create([
+                            'evento_id' => $evento->id,
+                            'tipo_notificacion' => 'sistema',
+                            'minutos_antes' => $recordatorio['minutos_antes'],
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            // Sincronizar con Google Calendar
+            try {
+                $googleService = new GoogleCalendarService();
+                if ($googleService->isAuthenticated() && $evento->google_event_id) {
+                    $googleService->updateEvent($evento);
+                }
+            } catch (\Exception $e) {
+                Log::error('Error al actualizar en Google Calendar: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'evento' => $evento->fresh()->load(['cliente', 'participantes', 'recordatorios'])
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al actualizar evento: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar evento: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function destroy(Evento $evento)
