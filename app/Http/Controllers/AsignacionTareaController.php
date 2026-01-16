@@ -8,6 +8,8 @@ use App\Models\Empleado;
 use App\Models\Notificacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AsignacionTareaController extends Controller
 {
@@ -105,7 +107,13 @@ class AsignacionTareaController extends Controller
 
     public function misTareas()
     {
-        $empleado = auth()->user()->empleado;
+        $user = Auth::user();
+        
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Debes iniciar sesión.');
+        }
+        
+        $empleado = $user->empleado;
         
         if (!$empleado) {
             return redirect()->route('dashboard')->with('error', 'No tienes un perfil de empleado asociado.');
@@ -199,6 +207,43 @@ class AsignacionTareaController extends Controller
         return redirect()->back()->with('success', 'Evidencia subida exitosamente. Tarea marcada como terminada.');
     }
 
+
+    public function verEvidencia(AsignacionTarea $asignacion)
+    {
+        $user = Auth::user();
+
+        // ✅ Permisos:
+        // - Admin puede ver cualquier evidencia
+        // - Empleado solo puede ver evidencia de sus propias asignaciones
+        if ($user->rol === 'admin') {
+            // OK
+        } elseif ($user->rol === 'empleado') {
+            if (!$user->empleado || (int)$user->empleado->id_empleado !== (int)$asignacion->empleado_id) {
+                abort(403, 'No autorizado para ver esta evidencia.');
+            }
+        } else {
+            abort(403, 'No autorizado.');
+        }
+
+        // ✅ Validar evidencia
+        if (!$asignacion->evidencia_path) {
+            abort(404, 'Esta asignación no tiene evidencia.');
+        }
+
+        // OJO: tu evidencia se guarda en disk "public"
+        if (!Storage::disk('public')->exists($asignacion->evidencia_path)) {
+            abort(404, 'No se encontró el archivo de evidencia.');
+        }
+
+        $fullPath = Storage::disk('public')->path($asignacion->evidencia_path);
+
+        return response()->file($fullPath, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="evidencia.pdf"',
+        ]);
+    }
+
+
     public function eliminarEvidencia(AsignacionTarea $asignacion)
     {
         if ($asignacion->evidencia_path && Storage::exists($asignacion->evidencia_path)) {
@@ -272,16 +317,25 @@ class AsignacionTareaController extends Controller
         return response()->json(['success' => true, 'message' => 'Evaluación actualizada correctamente.']);
     }
 
+    
+
     public function destroy(AsignacionTarea $asignacion)
     {
-        if ($asignacion->evidencia_path && Storage::exists($asignacion->evidencia_path)) {
-            Storage::delete($asignacion->evidencia_path);
+        // Eliminar evidencia si existe
+        if ($asignacion->evidencia_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($asignacion->evidencia_path)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($asignacion->evidencia_path);
         }
+
+        // Eliminar notificaciones relacionadas (opcional pero recomendado)
+        \App\Models\Notificacion::where('asignacion_tarea_id', $asignacion->getKey())->delete();
 
         $asignacion->delete();
 
         return redirect()->route('asignaciones.index')->with('success', 'Asignación eliminada exitosamente.');
     }
+
+
+
 
     public function searchTareas(Request $request)
     {

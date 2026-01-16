@@ -10,7 +10,6 @@ use App\Http\Controllers\AsignacionTareaController;
 use App\Http\Controllers\PublicacionController;
 use App\Http\Controllers\CalendarioConfigController;
 use App\Http\Controllers\NotificacionController;
-// use App\Http\Controllers\ProfileController; // <-- YA NO LO NECESITAMOS
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -80,28 +79,38 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/tareas/search-clientes', [TareaController::class, 'searchClientes'])->name('tareas.searchClientes');
     Route::get('/tareas/search-categorias', [TareaController::class, 'searchCategorias'])->name('tareas.searchCategorias');
 
-    // ASIGNACIONES DE TAREAS (Admin)
-    Route::resource('asignaciones', AsignacionTareaController::class)->except(['show', 'edit']);
+    // ✅ ASIGNACIONES DE TAREAS (Admin)
+    Route::resource('asignaciones', AsignacionTareaController::class)
+        ->parameters(['asignaciones' => 'asignacion']) // ✅ FIX IMPORTANTE
+        ->except(['show', 'edit']);
+
     Route::get('/asignaciones/search-tareas', [AsignacionTareaController::class, 'searchTareas'])->name('asignaciones.searchTareas');
     Route::get('/asignaciones/search-empleados', [AsignacionTareaController::class, 'searchEmpleados'])->name('asignaciones.searchEmpleados');
     Route::get('/asignaciones/empleado/{empleado}', [AsignacionTareaController::class, 'tareasEmpleado'])->name('asignaciones.tareasEmpleado');
     Route::post('/asignaciones/{asignacion}/actualizar-estado-admin', [AsignacionTareaController::class, 'actualizarEstadoAdmin'])->name('asignaciones.actualizarEstadoAdmin');
 
+    // ✅ VER EVIDENCIA PDF (Admin también la puede ver)
+    // (El control de permisos finos lo hace el método verEvidencia() en el controlador)
+    Route::get('/asignaciones/{asignacion}/evidencia', [AsignacionTareaController::class, 'verEvidencia'])
+        ->name('asignaciones.verEvidencia');
+
     // --- CALENDARIO DE PUBLICACIONES ---
-
-    // 1. Calendario General
     Route::get('/calendario', [PublicacionController::class, 'index'])->name('calendario.general');
-
-    // 2. Gestión por cliente (ID opcional en URL)
     Route::get('/calendario/gestion/{cliente_id?}', [PublicacionController::class, 'gestionCliente'])->name('calendario.gestion');
 
-    // 3. CRUD Publicaciones
+    // CRUD Publicaciones
     Route::post('/publicaciones/masivo', [PublicacionController::class, 'storeMasivo'])->name('publicaciones.storeMasivo');
+    
+    // ✅ NUEVA RUTA: Actualización Masiva
+    Route::put('/publicaciones/masivo', [PublicacionController::class, 'updateMasivo'])->name('publicaciones.updateMasivo');
+    // Agrega esta línea en el grupo de rutas donde está PublicacionController
+    Route::delete('/calendario/lote', [PublicacionController::class, 'destroyLote'])->name('calendario.destroyLote');
+
     Route::post('/publicaciones', [PublicacionController::class, 'store'])->name('publicaciones.store');
     Route::put('/publicaciones/{idPublicacion}', [PublicacionController::class, 'update'])->name('publicaciones.update');
     Route::delete('/publicaciones/{idPublicacion}', [PublicacionController::class, 'destroy'])->name('publicaciones.destroy');
 
-    // 4. CONFIGURACIÓN (Plataformas y Formatos)
+    // CONFIGURACIÓN (Plataformas y Formatos)
     Route::get('/calendario/configuracion', [CalendarioConfigController::class, 'index'])->name('calendario.config');
     Route::post('/calendario/plataformas', [CalendarioConfigController::class, 'storePlataforma'])->name('plataformas.store');
     Route::delete('/calendario/plataformas/{id}', [CalendarioConfigController::class, 'destroyPlataforma'])->name('plataformas.destroy');
@@ -110,13 +119,19 @@ Route::middleware(['auth', 'admin'])->group(function () {
 });
 
 
-// Rutas para empleados autenticados
+// Rutas para usuarios autenticados (empleados / admin si aplica)
 Route::middleware(['auth'])->group(function () {
+
     // MIS TAREAS ASIGNADAS (Empleado)
     Route::get('/mis-tareas', [AsignacionTareaController::class, 'misTareas'])->name('asignaciones.misTareas');
     Route::post('/mis-tareas/{asignacion}/actualizar-estado', [AsignacionTareaController::class, 'actualizarEstadoEmpleado'])->name('asignaciones.actualizarEstadoEmpleado');
     Route::post('/mis-tareas/{asignacion}/subir-evidencia', [AsignacionTareaController::class, 'subirEvidencia'])->name('asignaciones.subirEvidencia');
     Route::delete('/mis-tareas/{asignacion}/eliminar-evidencia', [AsignacionTareaController::class, 'eliminarEvidencia'])->name('asignaciones.eliminarEvidencia');
+
+    // ✅ VER EVIDENCIA PDF (Empleado dueño también la puede ver)
+    // (El control de permisos finos lo hace el método verEvidencia() en el controlador)
+    Route::get('/asignaciones/{asignacion}/evidencia', [AsignacionTareaController::class, 'verEvidencia'])
+        ->name('asignaciones.verEvidencia');
 
     // NOTIFICACIONES
     Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');

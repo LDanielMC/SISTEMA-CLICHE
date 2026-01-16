@@ -163,6 +163,80 @@ class PublicacionController extends Controller
             ->with('success', "¡Listo! Se creó el calendario y se guardaron $contador publicaciones.");
     }
 
+    /**
+     * ✅ Actualización Masiva (Edición y Creación)
+     */
+    public function updateMasivo(Request $request)
+    {
+        // 1. Validar
+        $data = $request->validate([
+            // Validaciones para las publicaciones existentes
+            'publicaciones' => 'nullable|array',
+            'publicaciones.*.fecha' => 'required_with:publicaciones|date',
+            'publicaciones.*.plataforma_id' => 'required_with:publicaciones|exists:plataformas,id',
+            'publicaciones.*.formato_id' => 'required_with:publicaciones|exists:formatos,id',
+            'publicaciones.*.estatus' => 'required_with:publicaciones|in:Pendiente,Publicado,Reprogramar',
+            'publicaciones.*.copy' => 'nullable|string',
+            'publicaciones.*.arte' => 'nullable|string',
+
+            // Validaciones para las nuevas filas agregadas en el modal
+            'nuevas' => 'nullable|array',
+            'nuevas.*.fecha' => 'required_with:nuevas|date',
+            'nuevas.*.plataforma_id' => 'required_with:nuevas|exists:plataformas,id',
+            'nuevas.*.formato_id' => 'required_with:nuevas|exists:formatos,id',
+            'nuevas.*.estatus' => 'required_with:nuevas|in:Pendiente,Publicado,Reprogramar',
+            'nuevas.*.copy' => 'nullable|string',
+            'nuevas.*.arte' => 'nullable|string',
+
+            // Datos generales (necesarios para crear nuevas)
+            'cliente_id' => 'required_with:nuevas|exists:clientes,id_cliente',
+            'lote_calendario' => 'nullable|string',
+        ]);
+
+        $contador = 0;
+
+        // 2. Iterar y actualizar las existentes
+        if (!empty($data['publicaciones'])) {
+            foreach ($data['publicaciones'] as $id => $campos) {
+                $publicacion = Publicacion::find($id);
+
+                if ($publicacion) {
+                    $publicacion->update([
+                        'fecha' => $campos['fecha'],
+                        'plataforma_id' => $campos['plataforma_id'],
+                        'formato_id' => $campos['formato_id'],
+                        'copy' => $campos['copy'],
+                        'arte' => $campos['arte'],
+                        'estatus' => $campos['estatus'],
+                    ]);
+                    $contador++;
+                }
+            }
+        }
+
+        // 3. Crear las nuevas (si existen)
+        if (!empty($data['nuevas'])) {
+            $lote = ($request->lote_calendario === 'SIN_LOTE') ? null : $request->lote_calendario;
+
+            foreach ($data['nuevas'] as $campos) {
+                Publicacion::create([
+                    'cliente_id' => $request->cliente_id,
+                    'lote_calendario' => $lote,
+                    'plataforma_id' => $campos['plataforma_id'],
+                    'formato_id' => $campos['formato_id'],
+                    'fecha' => $campos['fecha'],
+                    'copy' => $campos['copy'] ?? null,
+                    'arte' => $campos['arte'] ?? null,
+                    'estatus' => $campos['estatus'],
+                ]);
+                $contador++;
+            }
+        }
+
+        // 4. Retornar
+        return back()->with('success', "Se procesaron $contador registros (actualizaciones y nuevos).");
+    }
+
     public function update(Request $request, $idPublicacion)
     {
         $publicacion = Publicacion::findOrFail($idPublicacion);
@@ -184,6 +258,22 @@ class PublicacionController extends Controller
         $publicacion->delete();
 
         return back()->with('success', 'Publicación eliminada.');
+    }
+
+        //ELIMINAR LOTE COMPLETO (Acción desde la tarjeta del calendario)
+    public function destroyLote(Request $request)
+    {
+        $request->validate([
+            'lote_calendario' => 'required|string',
+            'cliente_id' => 'required|exists:clientes,id_cliente'
+        ]);
+
+        // Borra todas las publicaciones que tengan ese ID de lote
+        $deleted = Publicacion::where('lote_calendario', $request->lote_calendario)->delete();
+
+        // Redirige al mismo dashboard del cliente
+        return redirect()->route('calendario.gestion', ['cliente_id' => $request->cliente_id])
+            ->with('success', "Calendario eliminado correctamente ($deleted publicaciones borradas).");
     }
 
     private function getColorPorEstatus($estatus)

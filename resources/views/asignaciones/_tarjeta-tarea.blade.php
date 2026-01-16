@@ -1,7 +1,9 @@
+{{-- resources/views/asignaciones/_tarjeta-tarea.blade.php --}}
+
 <div class="kanban-card bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-move hover:shadow-md transition"
      draggable="true"
      data-asignacion-id="{{ $asignacion->id }}">
-    
+
     {{-- Prioridad --}}
     <div class="flex items-center justify-between mb-2">
         <span class="px-2 py-1 text-xs font-semibold rounded {{ $asignacion->prioridad_color }}">
@@ -27,6 +29,7 @@
                 {{ $asignacion->tarea->cliente->empresa ?: $asignacion->tarea->cliente->nombre . ' ' . $asignacion->tarea->cliente->apellido_paterno }}
             @endif
         </div>
+
         <div class="flex items-center">
             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
@@ -43,10 +46,15 @@
         Límite: {{ $asignacion->fecha_limite->format('d/m/Y') }}
     </div>
 
+    {{-- =========================
+         BLOQUE EMPLEADO
+         ========================= --}}
     @if(isset($esEmpleado) && $esEmpleado)
+
         {{-- Botón para subir evidencia --}}
         @if($asignacion->estado_empleado !== 'terminada')
-            <button onclick="openEvidenciaModal({{ $asignacion->id }})"
+            <button type="button"
+                    onclick="openEvidenciaModal({{ $asignacion->id }})"
                     class="w-full text-xs bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition">
                 📎 Subir evidencia
             </button>
@@ -58,17 +66,23 @@
                     </svg>
                     Evidencia entregada
                 </div>
-                
+
                 {{-- Botones para ver y eliminar evidencia --}}
                 <div class="flex gap-2">
-                    <a href="{{ Storage::url($asignacion->evidencia_path) }}" target="_blank"
+                    {{-- ✅ LINK SEGURO (NO Storage::url) --}}
+                    <a href="{{ route('asignaciones.verEvidencia', $asignacion) }}" target="_blank"
                        class="flex-1 text-xs bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 transition text-center">
                         👁️ Ver PDF
                     </a>
-                    <form id="form-eliminar-{{ $asignacion->id }}" method="POST" action="{{ route('asignaciones.eliminarEvidencia', $asignacion) }}" style="display: inline; width: 50%;">
+
+                    <form id="form-eliminar-{{ $asignacion->id }}"
+                          method="POST"
+                          action="{{ route('asignaciones.eliminarEvidencia', $asignacion) }}"
+                          style="display: inline; width: 50%;">
                         @csrf
                         @method('DELETE')
-                        <button type="button" onclick="confirmarEliminarEvidencia({{ $asignacion->id }})"
+                        <button type="button"
+                                onclick="confirmarEliminarEvidencia({{ $asignacion->id }})"
                                 class="w-full text-xs bg-red-100 text-red-700 px-3 py-2 rounded hover:bg-red-200 transition">
                             🗑️ Eliminar
                         </button>
@@ -76,10 +90,14 @@
                 </div>
             </div>
         @endif
+
+    {{-- =========================
+         BLOQUE ADMIN
+         ========================= --}}
     @else
-        {{-- Info para admin --}}
         @if($asignacion->evidencia_path)
-            <a href="{{ Storage::url($asignacion->evidencia_path) }}" target="_blank"
+            {{-- ✅ LINK SEGURO (NO Storage::url) --}}
+            <a href="{{ route('asignaciones.verEvidencia', $asignacion) }}" target="_blank"
                class="text-xs text-blue-600 hover:underline flex items-center">
                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd"/>
@@ -95,6 +113,7 @@
 {{-- Modal para subir evidencia --}}
 @if(isset($esEmpleado) && $esEmpleado)
     @once
+
     <div id="evidenciaModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div class="mt-3">
@@ -108,7 +127,7 @@
                         <p class="text-xs text-gray-500 mt-1">Máximo 10MB. Solo archivos PDF.</p>
                     </div>
                     <div class="flex gap-3 justify-end">
-                        <button type="button" onclick="closeEvidenciaModal()" 
+                        <button type="button" onclick="closeEvidenciaModal()"
                                 class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold text-sm transition">
                             Cancelar
                         </button>
@@ -139,7 +158,7 @@
                     Al subir la evidencia, la tarea se marcará automáticamente como <strong>Terminada</strong>.
                 </p>
                 <div class="flex gap-3 justify-center">
-                    <button type="button" onclick="cerrarConfirmacionSubir()" 
+                    <button type="button" onclick="cerrarConfirmacionSubir()"
                             class="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold text-sm transition">
                         Cancelar
                     </button>
@@ -170,7 +189,7 @@
                     Podrás subir una nueva evidencia después.
                 </p>
                 <div class="flex gap-3 justify-center">
-                    <button type="button" onclick="cerrarConfirmacionEliminar()" 
+                    <button type="button" onclick="cerrarConfirmacionEliminar()"
                             class="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold text-sm transition">
                         Cancelar
                     </button>
@@ -205,14 +224,14 @@
 
         function mostrarConfirmacionSubir() {
             const input = document.getElementById('evidenciaInput');
-            
+
             if (!input.files || input.files.length === 0) {
                 mostrarToast('Por favor selecciona un archivo PDF', 'error');
                 return;
             }
 
             const file = input.files[0];
-            
+
             // Validar que sea PDF
             if (file.type !== 'application/pdf') {
                 mostrarToast('El archivo debe ser un PDF', 'error');
@@ -225,10 +244,7 @@
                 return;
             }
 
-            // Mostrar nombre del archivo en el modal de confirmación
             document.getElementById('nombreArchivo').textContent = file.name;
-            
-            // Mostrar modal de confirmación
             document.getElementById('confirmarSubirModal').classList.remove('hidden');
         }
 
@@ -237,10 +253,7 @@
         }
 
         function confirmarSubirEvidencia() {
-            // Cerrar modal de confirmación
             cerrarConfirmacionSubir();
-            
-            // Enviar el formulario
             document.getElementById('evidenciaForm').submit();
         }
 
@@ -251,7 +264,6 @@
                 return;
             }
             currentAsignacionId = asignacionId;
-            console.log('Guardando ID para eliminar:', currentAsignacionId);
             document.getElementById('confirmarEliminarModal').classList.remove('hidden');
         }
 
@@ -261,36 +273,40 @@
 
         function confirmarEliminarEvidenciaFinal() {
             if (!currentAsignacionId) {
-                console.error('currentAsignacionId no está definido');
                 mostrarToast('Error: No se pudo identificar la tarea', 'error');
                 cerrarConfirmacionEliminar();
                 return;
             }
 
-            console.log('Eliminando evidencia para ID:', currentAsignacionId);
             cerrarConfirmacionEliminar();
 
-            // Enviar el formulario
             const form = document.getElementById(`form-eliminar-${currentAsignacionId}`);
             if (form) {
                 form.submit();
             } else {
-                console.error('No se encontró el formulario');
                 mostrarToast('Error: No se pudo enviar el formulario', 'error');
             }
         }
 
         function mostrarToast(mensaje, tipo = 'success') {
             const toast = document.createElement('div');
+
             const bgColor = tipo === 'success' ? 'bg-green-500' : 'bg-red-500';
-            const icon = tipo === 'success' ? 
-                '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
-                '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
-            
-            toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-xl z-[70] flex items-center animate-slide-in`;
+            const icon = tipo === 'success'
+                ? '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                : '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+
+
             toast.innerHTML = `${icon}<span>${mensaje}</span>`;
+
+            // ✅ TOP seguro: debajo de tu nav (h-24 = 96px) + margen
+            toast.style.top = '7.5rem'; // 120px aprox
+
+            // ✅ Z-INDEX ultra alto (sin depender de Tailwind)
+            toast.style.zIndex = '2147483647';
+
             document.body.appendChild(toast);
-            
+
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateX(100px)';
@@ -300,21 +316,15 @@
 
         // Cerrar modales al hacer click fuera
         document.getElementById('evidenciaModal')?.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeEvidenciaModal();
-            }
+            if (e.target === this) closeEvidenciaModal();
         });
 
         document.getElementById('confirmarSubirModal')?.addEventListener('click', function(e) {
-            if (e.target === this) {
-                cerrarConfirmacionSubir();
-            }
+            if (e.target === this) cerrarConfirmacionSubir();
         });
 
         document.getElementById('confirmarEliminarModal')?.addEventListener('click', function(e) {
-            if (e.target === this) {
-                cerrarConfirmacionEliminar();
-            }
+            if (e.target === this) cerrarConfirmacionEliminar();
         });
 
         // Cerrar modales con tecla Escape
@@ -327,5 +337,6 @@
         });
     </script>
     @endpush
+
     @endonce
 @endif
