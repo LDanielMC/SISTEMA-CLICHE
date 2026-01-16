@@ -5,6 +5,7 @@ namespace App\Services;
 use Google\Client;
 use Google\Service\Calendar;
 use Google\Service\Calendar\Event;
+use Google\Service\Calendar\EventDateTime;
 use App\Models\Evento;
 use Carbon\Carbon;
 
@@ -148,7 +149,12 @@ class GoogleCalendarService
                 $googleEvent->setRecurrence($this->buildRecurrenceRule($evento));
             }
 
-            $createdEvent = $service->events->insert($this->calendarId, $googleEvent);
+            // Insertar evento y enviar notificaciones a participantes
+            $createdEvent = $service->events->insert(
+                $this->calendarId, 
+                $googleEvent,
+                ['sendNotifications' => true] // Enviar invitaciones por correo
+            );
             
             // Actualizar evento con el ID de Google
             $evento->update([
@@ -186,16 +192,45 @@ class GoogleCalendarService
             $googleEvent->setSummary($evento->titulo);
             $googleEvent->setLocation($evento->lugar);
             $googleEvent->setDescription($this->buildDescription($evento));
-            $googleEvent->setStart([
-                'dateTime' => Carbon::parse($evento->fecha->format('Y-m-d') . ' ' . $horaInicio)->toRfc3339String(),
-                'timeZone' => config('app.timezone'),
-            ]);
-            $googleEvent->setEnd([
-                'dateTime' => Carbon::parse($evento->fecha->format('Y-m-d') . ' ' . $horaFin)->toRfc3339String(),
-                'timeZone' => config('app.timezone'),
-            ]);
+            
+            // Crear objetos EventDateTime correctamente
+            $start = new EventDateTime();
+            $start->setDateTime(Carbon::parse($evento->fecha->format('Y-m-d') . ' ' . $horaInicio)->toRfc3339String());
+            $start->setTimeZone(config('app.timezone'));
+            $googleEvent->setStart($start);
+            
+            $end = new EventDateTime();
+            $end->setDateTime(Carbon::parse($evento->fecha->format('Y-m-d') . ' ' . $horaFin)->toRfc3339String());
+            $end->setTimeZone(config('app.timezone'));
+            $googleEvent->setEnd($end);
+            
+            // Actualizar participantes
+            if ($evento->participantes->count() > 0) {
+                $attendees = [];
+                foreach ($evento->participantes as $participante) {
+                    $attendees[] = ['email' => $participante->correo];
+                }
+                $googleEvent->setAttendees($attendees);
+            } else {
+                // Limpiar participantes si ya no hay
+                $googleEvent->setAttendees([]);
+            }
+            
+            // Actualizar recurrencia
+            if ($evento->recurrencia !== 'ninguna' && $evento->recurrencia_hasta) {
+                $googleEvent->setRecurrence($this->buildRecurrenceRule($evento));
+            } else {
+                // Limpiar recurrencia si se cambió a "ninguna"
+                $googleEvent->setRecurrence(null);
+            }
 
-            $updatedEvent = $service->events->update($this->calendarId, $evento->google_event_id, $googleEvent);
+            // Actualizar evento y enviar notificaciones
+            $updatedEvent = $service->events->update(
+                $this->calendarId, 
+                $evento->google_event_id, 
+                $googleEvent,
+                ['sendNotifications' => true] // Enviar notificaciones de cambios
+            );
             
             $evento->update([
                 'ultima_sincronizacion' => now(),

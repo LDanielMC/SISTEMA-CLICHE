@@ -33,7 +33,7 @@
             <div class="p-6">
                 <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Próximos Eventos</h3>
                 <div id="proximosEventos" class="space-y-3">
-                    @forelse($eventos->take(5) as $evento)
+                    @forelse($eventos as $evento)
                         <div class="border-l-4 pl-4 py-2" style="border-color: {{ $evento->color }}">
                             <div class="flex justify-between items-start">
                                 <div>
@@ -451,22 +451,27 @@
         }
     }
 
-    function agregarParticipante() {
+    function agregarParticipante(datos = null) {
         const container = document.getElementById('participantesContainer');
         const index = participanteIndex++;
+        
+        const tipo = datos?.tipo || 'externo';
+        const nombre = datos?.nombre || '';
+        const correo = datos?.correo || '';
+        const referenciaId = datos?.referencia_id || '';
         
         const html = `
             <div class="participante-item flex gap-2" data-index="${index}">
                 <select name="participantes[${index}][tipo]" class="flex-1 px-2 py-1 border rounded" onchange="cambiarTipoParticipante(${index})">
-                    <option value="externo">Externo</option>
-                    <option value="empleado">Empleado</option>
-                    <option value="cliente">Cliente</option>
+                    <option value="externo" ${tipo === 'externo' ? 'selected' : ''}>Externo</option>
+                    <option value="empleado" ${tipo === 'empleado' ? 'selected' : ''}>Empleado</option>
+                    <option value="cliente" ${tipo === 'cliente' ? 'selected' : ''}>Cliente</option>
                 </select>
                 <input type="text" name="participantes[${index}][nombre]" placeholder="Nombre" required
-                       class="flex-1 px-2 py-1 border rounded participante-nombre-${index}">
+                       value="${nombre}" class="flex-1 px-2 py-1 border rounded participante-nombre-${index}">
                 <input type="email" name="participantes[${index}][correo]" placeholder="Correo" required
-                       class="flex-1 px-2 py-1 border rounded participante-correo-${index}">
-                <input type="hidden" name="participantes[${index}][referencia_id]" class="participante-ref-${index}">
+                       value="${correo}" class="flex-1 px-2 py-1 border rounded participante-correo-${index}">
+                <input type="hidden" name="participantes[${index}][referencia_id]" value="${referenciaId}" class="participante-ref-${index}">
                 <button type="button" onclick="eliminarParticipante(${index})" 
                         class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
                     ✕
@@ -481,23 +486,20 @@
         document.querySelector(`.participante-item[data-index="${index}"]`).remove();
     }
 
-    function agregarRecordatorio() {
+    function agregarRecordatorio(datos = null) {
         const container = document.getElementById('recordatoriosContainer');
         const index = recordatorioIndex++;
         
+        const minutosAntes = datos?.minutos_antes || '30';
+        
         const html = `
             <div class="recordatorio-item flex gap-2" data-index="${index}">
-                <select name="recordatorios[${index}][tipo_notificacion]" class="flex-1 px-2 py-1 border rounded">
-                    <option value="ambos">Correo + Sistema</option>
-                    <option value="correo">Solo Correo</option>
-                    <option value="sistema">Solo Sistema</option>
-                </select>
                 <select name="recordatorios[${index}][minutos_antes]" class="flex-1 px-2 py-1 border rounded">
-                    <option value="10">10 minutos antes</option>
-                    <option value="30">30 minutos antes</option>
-                    <option value="60">1 hora antes</option>
-                    <option value="120">2 horas antes</option>
-                    <option value="1440">1 día antes</option>
+                    <option value="10" ${minutosAntes == '10' ? 'selected' : ''}>10 minutos antes</option>
+                    <option value="30" ${minutosAntes == '30' ? 'selected' : ''}>30 minutos antes</option>
+                    <option value="60" ${minutosAntes == '60' ? 'selected' : ''}>1 hora antes</option>
+                    <option value="120" ${minutosAntes == '120' ? 'selected' : ''}>2 horas antes</option>
+                    <option value="1440" ${minutosAntes == '1440' ? 'selected' : ''}>1 día antes</option>
                 </select>
                 <button type="button" onclick="eliminarRecordatorio(${index})" 
                         class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
@@ -557,19 +559,35 @@
                 body: JSON.stringify(data)
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
             
             if (result.success) {
                 cerrarModal();
-                calendar.refetchEvents();
                 mostrarToast('Evento guardado exitosamente', 'success');
-                setTimeout(() => window.location.reload(), 1000);
+                
+                // Recargar calendario y lista de eventos
+                calendar.refetchEvents();
+                setTimeout(() => {
+                    location.reload();
+                }, 800);
             } else {
-                mostrarToast(result.error || 'Error al guardar el evento', 'error');
+                mostrarToast(result.message || result.error || 'Error al guardar el evento', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            mostrarToast('Error de conexión', 'error');
+            
+            // Si es error de timeout o conexión, asumir que pudo haberse guardado
+            cerrarModal();
+            mostrarToast('El evento pudo haberse guardado. Recargando...', 'warning');
+            
+            // Recargar de todos modos para verificar
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
         }
     });
 
@@ -687,8 +705,9 @@
     
     function editarDesdeDetalles() {
         if (eventoActual) {
+            const eventoId = eventoActual.id;
             cerrarModalDetalles();
-            editarEvento(eventoActual.id);
+            editarEvento(eventoId);
         }
     }
     
@@ -850,12 +869,21 @@
 
     function mostrarToast(mensaje, tipo = 'success') {
         const toast = document.createElement('div');
-        const bgColor = tipo === 'success' ? 'bg-green-500' : 'bg-red-500';
+        let bgColor = 'bg-green-500';
+        
+        if (tipo === 'error') {
+            bgColor = 'bg-red-500';
+        } else if (tipo === 'warning') {
+            bgColor = 'bg-yellow-500';
+        }
+        
         toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-xl z-50`;
         toast.textContent = mensaje;
         document.body.appendChild(toast);
         
-        setTimeout(() => toast.remove(), 3000);
+        setTimeout(() => {
+            toast.remove();
+        }, tipo === 'warning' ? 4000 : 3000);
     }
 </script>
 @endpush
