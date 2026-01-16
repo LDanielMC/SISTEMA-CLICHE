@@ -34,7 +34,8 @@
                                     : ((isset($clienteSeleccionado) && (string)$clienteSeleccionado->id_cliente === (string)$cliente->id_cliente) ? 'selected' : '')
                                 }}
                             >
-                                {{ $cliente->nombre }}
+                                <!-- Lógica: Empresa primero, sino Nombre + Apellido Paterno -->
+                                {{ $cliente->empresa ?: $cliente->nombre . ' ' . $cliente->apellido_paterno }}
                             </option>
                         @endforeach
                     </select>
@@ -58,7 +59,9 @@
 
                         <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div>
-                                <h3 class="text-lg font-bold text-gray-800">Calendarios de {{ $clienteSeleccionado->nombre }}</h3>
+                                <h3 class="text-lg font-bold text-gray-800">
+                                    Calendarios de {{ $clienteSeleccionado->empresa ?: $clienteSeleccionado->nombre . ' ' . $clienteSeleccionado->apellido_paterno }}
+                                </h3>
                                 <p class="text-sm text-gray-500">Cada tarjeta es un calendario (rango de fechas).</p>
                             </div>
 
@@ -94,9 +97,26 @@
                                                                 Última actualización: {{ $t['updated_at']->format('d/m/Y') }}
                                                             </p>
                                                         </div>
-                                                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-semibold">
-                                                            {{ $t['total'] }} posts
-                                                        </span>
+                                                        
+                                                        <div class="flex items-center gap-3">
+                                                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-semibold">
+                                                                {{ $t['total'] }} posts
+                                                            </span>
+
+                                                            <!-- ✅ BOTÓN ELIMINAR CALENDARIO -->
+                                                            <form action="{{ route('calendario.destroyLote') }}" method="POST" 
+                                                                onsubmit="return confirm('⚠️ ¿Estás seguro de eliminar TODO este calendario?\n\nSe borrarán permanentemente {{ $t['total'] }} publicaciones.\n\nEsta acción NO se puede deshacer.');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <input type="hidden" name="lote_calendario" value="{{ $t['lote'] }}">
+                                                                <input type="hidden" name="cliente_id" value="{{ $clienteSeleccionado->id_cliente }}">
+                                                                <button type="submit" class="text-gray-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors" title="Eliminar Calendario">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
+                                                                </button>
+                                                            </form>
+                                                        </div>
                                                     </div>
 
                                                     <div class="p-6">
@@ -118,7 +138,8 @@
                                                                     <span class="w-2 h-2 rounded-full mr-2
                                                                         {{ $pub->estatus == 'Publicado' ? 'bg-green-500' : ($pub->estatus == 'Reprogramar' ? 'bg-red-500' : 'bg-yellow-400') }}"></span>
                                                                     <span class="font-medium mr-1">{{ $pub->fecha->format('d/m') }}:</span>
-                                                                    <span class="truncate">{{ $pub->plataforma->nombre }}</span>
+                                                                    <!-- CAMBIO: Muestra el Formato en lugar de la Plataforma -->
+                                                                    <span class="truncate">{{ $pub->formato->nombre }}</span>
                                                                 </div>
                                                             @endforeach
                                                             @if($t['total'] > 3)
@@ -136,24 +157,44 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- ✅ CONTENIDO OCULTO PARA EL MODAL (con forms reales) -->
+                                                <!-- ✅ CONTENIDO OCULTO PARA EL MODAL (Formulario Masivo) -->
                                                 <div id="modal-content-{{ $t['lote'] }}" class="hidden">
-                                                    <div class="text-sm text-gray-600 mb-3">
-                                                        <span class="font-semibold">Rango:</span>
-                                                        {{ $t['inicio']->isoFormat('D [de] MMMM YYYY') }} → {{ $t['fin']->isoFormat('D [de] MMMM YYYY') }}
+                                                    
+                                                    <!-- Formulario Masivo Invisible -->
+                                                    <form id="form-masivo-{{ $t['lote'] }}" action="{{ route('publicaciones.updateMasivo') }}" method="POST">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <!-- CAMPOS NECESARIOS PARA CREAR NUEVAS FILAS -->
+                                                        <input type="hidden" name="cliente_id" value="{{ $clienteSeleccionado->id_cliente }}">
+                                                        <input type="hidden" name="lote_calendario" value="{{ $t['lote'] }}">
+                                                    </form>
+
+                                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                                                        <div class="text-sm text-gray-600">
+                                                            <span class="font-semibold">Rango:</span>
+                                                            {{ $t['inicio']->isoFormat('D [de] MMMM YYYY') }} → {{ $t['fin']->isoFormat('D [de] MMMM YYYY') }}
+                                                        </div>
+                                                        
+                                                        <button type="submit" form="form-masivo-{{ $t['lote'] }}"
+                                                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md transition-transform transform hover:scale-105 flex items-center gap-2">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                            </svg>
+                                                            Guardar todos los cambios
+                                                        </button>
                                                     </div>
 
-                                                    <div class="overflow-x-auto border rounded-lg">
+                                                    <div class="overflow-x-auto border rounded-lg mb-4">
                                                         <table class="min-w-full text-sm">
                                                             <thead class="bg-gray-50">
                                                                 <tr class="text-left text-xs text-gray-500 uppercase">
-                                                                    <th class="py-3 px-3 whitespace-nowrap">Fecha</th>
-                                                                    <th class="py-3 px-3 whitespace-nowrap">Plataforma</th>
-                                                                    <th class="py-3 px-3 whitespace-nowrap">Formato</th>
-                                                                    <th class="py-3 px-3">Copy</th>
-                                                                    <th class="py-3 px-3">Arte</th>
-                                                                    <th class="py-3 px-3 whitespace-nowrap">Estatus</th>
-                                                                    <th class="py-3 px-3 whitespace-nowrap text-right">Acciones</th>
+                                                                    <th class="py-3 px-3 w-32">Fecha</th>
+                                                                    <th class="py-3 px-3 w-32">Plataforma</th>
+                                                                    <th class="py-3 px-3 w-32">Formato</th>
+                                                                    <th class="py-3 px-3 min-w-[200px]">Copy</th>
+                                                                    <th class="py-3 px-3 min-w-[200px]">Arte</th>
+                                                                    <th class="py-3 px-3 w-32">Estatus</th>
+                                                                    <th class="py-3 px-3 text-right">Acciones</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody class="divide-y bg-white">
@@ -167,59 +208,100 @@
                                                                             ($pub->arte ?? '').' '.
                                                                             $pub->estatus
                                                                         );
+                                                                        $formId = 'form-masivo-' . $t['lote'];
+                                                                        $prefix = "publicaciones[{$pub->idPublicacion}]";
                                                                     @endphp
 
-                                                                    <tr class="modal-row"
+                                                                    <tr class="modal-row align-top hover:bg-gray-50 transition-colors"
                                                                         data-estatus="{{ $pub->estatus }}"
                                                                         data-plataforma-id="{{ $pub->plataforma_id }}"
                                                                         data-search="{{ $search }}"
                                                                     >
-                                                                        <td class="py-3 px-3 whitespace-nowrap">{{ $pub->fecha->format('d/m/Y') }}</td>
-                                                                        <td class="py-3 px-3 whitespace-nowrap">{{ $pub->plataforma->nombre }}</td>
-                                                                        <td class="py-3 px-3 whitespace-nowrap">{{ $pub->formato->nombre }}</td>
-
-                                                                        <td class="py-3 px-3">
-                                                                            <div class="max-w-xs truncate text-gray-700" title="{{ $pub->copy ?? '' }}">
-                                                                                {{ $pub->copy ?? '-' }}
-                                                                            </div>
+                                                                        <td class="p-2">
+                                                                            <!-- ✅ FECHA: Validada con min y max -->
+                                                                            <input type="date" name="{{ $prefix }}[fecha]" form="{{ $formId }}"
+                                                                                value="{{ $pub->fecha->format('Y-m-d') }}"
+                                                                                min="{{ $t['inicio']->format('Y-m-d') }}"
+                                                                                max="{{ $t['fin']->format('Y-m-d') }}"
+                                                                                class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
                                                                         </td>
-
-                                                                        <td class="py-3 px-3">
-                                                                            <div class="max-w-xs truncate text-gray-700" title="{{ $pub->arte ?? '' }}">
-                                                                                {{ $pub->arte ?? '-' }}
-                                                                            </div>
+                                                                        <td class="p-2">
+                                                                            <select name="{{ $prefix }}[plataforma_id]" form="{{ $formId }}"
+                                                                                class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
+                                                                                @foreach($plataformas as $p)
+                                                                                    <option value="{{ $p->id }}" {{ $pub->plataforma_id == $p->id ? 'selected' : '' }}>
+                                                                                        {{ $p->nombre }}
+                                                                                    </option>
+                                                                                @endforeach
+                                                                            </select>
                                                                         </td>
-
-                                                                        <td class="py-3 px-3 whitespace-nowrap">
-                                                                            <form action="{{ route('publicaciones.update', $pub->idPublicacion) }}" method="POST" class="flex items-center gap-2">
-                                                                                @csrf
-                                                                                @method('PUT')
-                                                                                <select name="estatus" class="text-sm border-gray-300 rounded focus:ring-blue-500">
-                                                                                    <option value="Pendiente" {{ $pub->estatus=='Pendiente'?'selected':'' }}>Pendiente</option>
-                                                                                    <option value="Publicado" {{ $pub->estatus=='Publicado'?'selected':'' }}>Publicado</option>
-                                                                                    <option value="Reprogramar" {{ $pub->estatus=='Reprogramar'?'selected':'' }}>Reprogramar</option>
-                                                                                </select>
-                                                                                <button type="submit" class="text-blue-600 hover:text-blue-800 font-bold">
-                                                                                    Guardar
+                                                                        <td class="p-2">
+                                                                            <select name="{{ $prefix }}[formato_id]" form="{{ $formId }}"
+                                                                                class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
+                                                                                @foreach($formatos as $f)
+                                                                                    <option value="{{ $f->id }}" {{ $pub->formato_id == $f->id ? 'selected' : '' }}>
+                                                                                        {{ $f->nombre }}
+                                                                                    </option>
+                                                                                @endforeach
+                                                                            </select>
+                                                                        </td>
+                                                                        <td class="p-2">
+                                                                            <textarea name="{{ $prefix }}[copy]" form="{{ $formId }}" rows="4"
+                                                                                class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 resize-y"
+                                                                                placeholder="Escribe el copy...">{{ $pub->copy }}</textarea>
+                                                                        </td>
+                                                                        <td class="p-2">
+                                                                            <textarea name="{{ $prefix }}[arte]" form="{{ $formId }}" rows="4"
+                                                                                class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 resize-y"
+                                                                                placeholder="Indicaciones de arte...">{{ $pub->arte }}</textarea>
+                                                                        </td>
+                                                                        <td class="p-2">
+                                                                            <select name="{{ $prefix }}[estatus]" form="{{ $formId }}"
+                                                                                class="w-full text-xs border-gray-300 rounded focus:ring-blue-500
+                                                                                {{ $pub->estatus == 'Publicado' ? 'bg-green-50 text-green-700' : '' }}
+                                                                                {{ $pub->estatus == 'Reprogramar' ? 'bg-red-50 text-red-700' : '' }}">
+                                                                                <option value="Pendiente" {{ $pub->estatus=='Pendiente'?'selected':'' }}>Pendiente</option>
+                                                                                <option value="Publicado" {{ $pub->estatus=='Publicado'?'selected':'' }}>Publicado</option>
+                                                                                <option value="Reprogramar" {{ $pub->estatus=='Reprogramar'?'selected':'' }}>Reprogramar</option>
+                                                                            </select>
+                                                                        </td>
+                                                                        <td class="p-2 text-right align-middle">
+                                                                            <div class="flex items-center justify-end gap-1">
+                                                                                <!-- Botón Agregar Fila Aquí -->
+                                                                                <button type="button" onclick="agregarFilaModal('{{ $t['lote'] }}', '{{ $t['inicio']->format('Y-m-d') }}', '{{ $t['fin']->format('Y-m-d') }}', this)"
+                                                                                    class="text-blue-600 hover:text-blue-800 font-bold p-1 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200" title="Insertar fila abajo">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                                                    </svg>
                                                                                 </button>
-                                                                            </form>
-                                                                        </td>
 
-                                                                        <td class="py-3 px-3 whitespace-nowrap text-right">
-                                                                            <form action="{{ route('publicaciones.destroy', $pub->idPublicacion) }}" method="POST"
-                                                                                onsubmit="return confirm('¿Borrar publicación?');" class="inline">
-                                                                                @csrf
-                                                                                @method('DELETE')
-                                                                                <button class="text-red-600 hover:text-red-800 font-bold">
-                                                                                    Borrar
-                                                                                </button>
-                                                                            </form>
+                                                                                <!-- Botón Borrar -->
+                                                                                <form action="{{ route('publicaciones.destroy', $pub->idPublicacion) }}" method="POST"
+                                                                                    onsubmit="return confirm('¿Borrar publicación permanentemente?');" class="inline">
+                                                                                    @csrf
+                                                                                    @method('DELETE')
+                                                                                    <button class="text-red-400 hover:text-red-600 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar">
+                                                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                </form>
+                                                                            </div>
                                                                         </td>
                                                                     </tr>
                                                                 @endforeach
                                                             </tbody>
                                                         </table>
                                                     </div>
+
+                                                    <!-- ✅ BOTÓN AGREGAR: Pasamos las fechas min y max -->
+                                                    <button type="button" onclick="agregarFilaModal('{{ $t['lote'] }}', '{{ $t['inicio']->format('Y-m-d') }}', '{{ $t['fin']->format('Y-m-d') }}')"
+                                                        class="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center gap-1 px-4 py-2 hover:bg-blue-50 rounded w-full justify-center border border-dashed border-blue-300">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        Agregar Fila a este Calendario
+                                                    </button>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -245,21 +327,35 @@
                                         </button>
 
                                         <div id="modal-content-SIN_LOTE" class="hidden">
-                                            <div class="text-sm text-gray-600 mb-3">
-                                                Estas publicaciones no pertenecen a un calendario guardado.
+                                            
+                                            <form id="form-masivo-SIN_LOTE" action="{{ route('publicaciones.updateMasivo') }}" method="POST">
+                                                @csrf
+                                                @method('PUT')
+                                                <input type="hidden" name="cliente_id" value="{{ $clienteSeleccionado->id_cliente }}">
+                                                <input type="hidden" name="lote_calendario" value="SIN_LOTE">
+                                            </form>
+
+                                            <div class="flex justify-between items-center mb-4">
+                                                <div class="text-sm text-gray-600">
+                                                    Estas publicaciones no pertenecen a un calendario guardado.
+                                                </div>
+                                                <button type="submit" form="form-masivo-SIN_LOTE"
+                                                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md transition-transform transform hover:scale-105">
+                                                    Guardar todo
+                                                </button>
                                             </div>
 
-                                            <div class="overflow-x-auto border rounded-lg">
+                                            <div class="overflow-x-auto border rounded-lg mb-4">
                                                 <table class="min-w-full text-sm">
                                                     <thead class="bg-gray-50">
                                                         <tr class="text-left text-xs text-gray-500 uppercase">
-                                                            <th class="py-3 px-3 whitespace-nowrap">Fecha</th>
-                                                            <th class="py-3 px-3 whitespace-nowrap">Plataforma</th>
-                                                            <th class="py-3 px-3 whitespace-nowrap">Formato</th>
-                                                            <th class="py-3 px-3">Copy</th>
-                                                            <th class="py-3 px-3">Arte</th>
-                                                            <th class="py-3 px-3 whitespace-nowrap">Estatus</th>
-                                                            <th class="py-3 px-3 whitespace-nowrap text-right">Acciones</th>
+                                                            <th class="py-3 px-3 w-32">Fecha</th>
+                                                            <th class="py-3 px-3 w-32">Plataforma</th>
+                                                            <th class="py-3 px-3 w-32">Formato</th>
+                                                            <th class="py-3 px-3 min-w-[200px]">Copy</th>
+                                                            <th class="py-3 px-3 min-w-[200px]">Arte</th>
+                                                            <th class="py-3 px-3 w-32">Estatus</th>
+                                                            <th class="py-3 px-3 text-right">Acciones</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y bg-white">
@@ -273,43 +369,93 @@
                                                                     ($pub->arte ?? '').' '.
                                                                     $pub->estatus
                                                                 );
+                                                                $formId = 'form-masivo-SIN_LOTE';
+                                                                $prefix = "publicaciones[{$pub->idPublicacion}]";
                                                             @endphp
 
-                                                            <tr class="modal-row"
+                                                            <tr class="modal-row align-top hover:bg-gray-50 transition-colors"
                                                                 data-estatus="{{ $pub->estatus }}"
                                                                 data-plataforma-id="{{ $pub->plataforma_id }}"
                                                                 data-search="{{ $search }}"
                                                             >
-                                                                <td class="py-3 px-3 whitespace-nowrap">{{ $pub->fecha->format('d/m/Y') }}</td>
-                                                                <td class="py-3 px-3 whitespace-nowrap">{{ $pub->plataforma->nombre }}</td>
-                                                                <td class="py-3 px-3 whitespace-nowrap">{{ $pub->formato->nombre }}</td>
-                                                                <td class="py-3 px-3"><div class="max-w-xs truncate" title="{{ $pub->copy ?? '' }}">{{ $pub->copy ?? '-' }}</div></td>
-                                                                <td class="py-3 px-3"><div class="max-w-xs truncate" title="{{ $pub->arte ?? '' }}">{{ $pub->arte ?? '-' }}</div></td>
-                                                                <td class="py-3 px-3 whitespace-nowrap">
-                                                                    <form action="{{ route('publicaciones.update', $pub->idPublicacion) }}" method="POST" class="flex items-center gap-2">
-                                                                        @csrf
-                                                                        @method('PUT')
-                                                                        <select name="estatus" class="text-sm border-gray-300 rounded focus:ring-blue-500">
-                                                                            <option value="Pendiente" {{ $pub->estatus=='Pendiente'?'selected':'' }}>Pendiente</option>
-                                                                            <option value="Publicado" {{ $pub->estatus=='Publicado'?'selected':'' }}>Publicado</option>
-                                                                            <option value="Reprogramar" {{ $pub->estatus=='Reprogramar'?'selected':'' }}>Reprogramar</option>
-                                                                        </select>
-                                                                        <button type="submit" class="text-blue-600 hover:text-blue-800 font-bold">Guardar</button>
-                                                                    </form>
+                                                                <td class="p-2">
+                                                                    <input type="date" name="{{ $prefix }}[fecha]" form="{{ $formId }}"
+                                                                        value="{{ $pub->fecha->format('Y-m-d') }}"
+                                                                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
                                                                 </td>
-                                                                <td class="py-3 px-3 whitespace-nowrap text-right">
-                                                                    <form action="{{ route('publicaciones.destroy', $pub->idPublicacion) }}" method="POST"
-                                                                        onsubmit="return confirm('¿Borrar publicación?');" class="inline">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <button class="text-red-600 hover:text-red-800 font-bold">Borrar</button>
-                                                                    </form>
+                                                                <td class="p-2">
+                                                                    <select name="{{ $prefix }}[plataforma_id]" form="{{ $formId }}"
+                                                                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
+                                                                        @foreach($plataformas as $p)
+                                                                            <option value="{{ $p->id }}" {{ $pub->plataforma_id == $p->id ? 'selected' : '' }}>
+                                                                                {{ $p->nombre }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </td>
+                                                                <td class="p-2">
+                                                                    <select name="{{ $prefix }}[formato_id]" form="{{ $formId }}"
+                                                                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
+                                                                        @foreach($formatos as $f)
+                                                                            <option value="{{ $f->id }}" {{ $pub->formato_id == $f->id ? 'selected' : '' }}>
+                                                                                {{ $f->nombre }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </td>
+                                                                <td class="p-2">
+                                                                    <textarea name="{{ $prefix }}[copy]" form="{{ $formId }}" rows="4"
+                                                                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 resize-y"
+                                                                        placeholder="Copy...">{{ $pub->copy }}</textarea>
+                                                                </td>
+                                                                <td class="p-2">
+                                                                    <textarea name="{{ $prefix }}[arte]" form="{{ $formId }}" rows="4"
+                                                                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 resize-y"
+                                                                        placeholder="Arte...">{{ $pub->arte }}</textarea>
+                                                                </td>
+                                                                <td class="p-2">
+                                                                    <select name="{{ $prefix }}[estatus]" form="{{ $formId }}"
+                                                                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
+                                                                        <option value="Pendiente" {{ $pub->estatus=='Pendiente'?'selected':'' }}>Pendiente</option>
+                                                                        <option value="Publicado" {{ $pub->estatus=='Publicado'?'selected':'' }}>Publicado</option>
+                                                                        <option value="Reprogramar" {{ $pub->estatus=='Reprogramar'?'selected':'' }}>Reprogramar</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td class="p-2 text-right align-middle">
+                                                                    <div class="flex items-center justify-end gap-1">
+                                                                        <!-- Botón Agregar Fila Aquí -->
+                                                                        <button type="button" onclick="agregarFilaModal('SIN_LOTE', '', '', this)"
+                                                                            class="text-blue-600 hover:text-blue-800 font-bold p-1 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200" title="Insertar fila abajo">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                                            </svg>
+                                                                        </button>
+
+                                                                        <form action="{{ route('publicaciones.destroy', $pub->idPublicacion) }}" method="POST"
+                                                                            onsubmit="return confirm('¿Borrar publicación?');" class="inline">
+                                                                            @csrf
+                                                                            @method('DELETE')
+                                                                            <button class="text-red-400 hover:text-red-600 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar">
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </form>
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         @endforeach
                                                     </tbody>
                                                 </table>
                                             </div>
+
+                                            <button type="button" onclick="agregarFilaModal('SIN_LOTE', '', '')"
+                                                class="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center gap-1 px-4 py-2 hover:bg-blue-50 rounded w-full justify-center border border-dashed border-blue-300">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                                                </svg>
+                                                Agregar Fila a este Calendario
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -337,15 +483,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
-                                    <input type="date" id="rango_inicio" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <input type="date" id="rango_inicio" onchange="resetGenerarTabla()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Fecha Fin</label>
-                                    <input type="date" id="rango_fin" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <input type="date" id="rango_fin" onchange="resetGenerarTabla()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 </div>
                                 <div class="flex items-end">
-                                    <button type="button" onclick="inicializarTabla()"
-                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors">
+                                    <button type="button" id="btn-generar-tabla" onclick="inicializarTabla()"
+                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                         Generar Tabla
                                     </button>
                                 </div>
@@ -396,11 +542,12 @@
                 <div id="modal-overlay" class="hidden fixed inset-0 z-50">
                     <div class="absolute inset-0 bg-black/50" onclick="closeModal()"></div>
 
-                    <div class="relative mx-auto mt-10 w-[95%] max-w-6xl bg-white rounded-2xl shadow-xl overflow-hidden">
-                        <div class="p-5 border-b flex items-start justify-between gap-4">
+                    <!-- Aumenté el ancho máximo a max-w-7xl para tener más espacio -->
+                    <div class="relative mx-auto mt-5 md:mt-10 w-[95%] max-w-7xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div class="p-5 border-b flex items-start justify-between gap-4 shrink-0">
                             <div>
                                 <h3 id="modal-title" class="text-lg font-extrabold text-gray-900">Calendario</h3>
-                                <p class="text-sm text-gray-500">Filtra y actualiza el estatus de tus publicaciones.</p>
+                                <p class="text-sm text-gray-500">Edita directamente los campos y haz clic en "Guardar todos los cambios".</p>
                             </div>
 
                             <button type="button" onclick="closeModal()"
@@ -409,7 +556,7 @@
                             </button>
                         </div>
 
-                        <div class="p-5 bg-gray-50 border-b">
+                        <div class="p-5 bg-gray-50 border-b shrink-0">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-600 mb-1">Filtrar por estatus</label>
@@ -439,7 +586,7 @@
                             </div>
                         </div>
 
-                        <div class="p-5 max-h-[70vh] overflow-auto">
+                        <div class="p-5 overflow-auto flex-grow">
                             <div id="modal-body"></div>
                         </div>
                     </div>
@@ -465,6 +612,13 @@
             if (view === 'editor') {
                 dashboard.classList.add('hidden');
                 editor.classList.remove('hidden');
+                
+                // Resetear el botón al abrir el editor
+                const btn = document.getElementById('btn-generar-tabla');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Generar Tabla';
+                }
             } else {
                 editor.classList.add('hidden');
                 dashboard.classList.remove('hidden');
@@ -473,6 +627,7 @@
 
         // --- MODAL ---
         let currentModalRows = [];
+        let modalRowIndex = 0; // Índice para filas nuevas en el modal
 
         function openModal(lote, titulo) {
             const overlay = document.getElementById('modal-overlay');
@@ -485,6 +640,22 @@
             title.textContent = titulo || 'Calendario';
             body.innerHTML = content.innerHTML;
 
+            // --- FIX PARA IDS DUPLICADOS ---
+            // IMPORTANTE: Al copiar el HTML, el ID del form se duplica.
+            // Aquí lo renombramos a "modal-form-masivo" y re-vinculamos los inputs.
+            const form = body.querySelector('form[id^="form-masivo-"]');
+            if (form) {
+                const oldId = form.id;
+                const newId = 'modal-' + oldId;
+                form.id = newId;
+
+                // Re-vincular botón de guardar y los inputs
+                const linkedElements = body.querySelectorAll(`[form="${oldId}"]`);
+                linkedElements.forEach(el => {
+                    el.setAttribute('form', newId);
+                });
+            }
+
             // cache rows
             currentModalRows = Array.from(body.querySelectorAll('.modal-row'));
 
@@ -494,6 +665,7 @@
             document.getElementById('filtro-busqueda').value = '';
 
             overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Evitar scroll en el body
 
             setTimeout(() => {
                 document.getElementById('filtro-busqueda')?.focus();
@@ -508,6 +680,7 @@
             overlay.classList.add('hidden');
             body.innerHTML = '';
             currentModalRows = [];
+            document.body.style.overflow = ''; // Restaurar scroll
         }
 
         document.addEventListener('keydown', (e) => {
@@ -547,7 +720,7 @@
             return (items || []).map(i => `<option value="${i.id}">${i.nombre}</option>`).join('');
         }
 
-        function agregarFila(fechaPredefinida = '') {
+        function agregarFila(fechaPredefinida = '', btnReferencia = null) {
             const tbody = document.getElementById('cuerpo-tabla');
             if (!tbody) return;
 
@@ -574,11 +747,11 @@
                     </select>
                 </td>
                 <td class="px-2 py-2">
-                    <textarea name="items[${rowIndex}][copy]" rows="1"
+                    <textarea name="items[${rowIndex}][copy]" rows="3"
                         class="w-full text-sm border-gray-300 rounded focus:ring-blue-500" placeholder="#Hashtags..."></textarea>
                 </td>
                 <td class="px-2 py-2">
-                    <textarea name="items[${rowIndex}][arte]" rows="1"
+                    <textarea name="items[${rowIndex}][arte]" rows="3"
                         class="w-full text-sm border-gray-300 rounded focus:ring-blue-500" placeholder="Visual..."></textarea>
                 </td>
                 <td class="px-2 py-2">
@@ -588,13 +761,119 @@
                         <option value="Reprogramar">Reprogramar</option>
                     </select>
                 </td>
-                <td class="px-2 py-2 text-center">
-                    <button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 font-bold">X</button>
+                <td class="px-2 py-2 text-center align-middle">
+                    <div class="flex items-center justify-center gap-1">
+                        <button type="button" onclick="agregarFila('', this)" 
+                            class="text-blue-600 hover:text-blue-800 font-bold p-1 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200" title="Insertar fila abajo">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </button>
+                        <button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </td>
             `;
 
-            tbody.appendChild(tr);
+            if (btnReferencia) {
+                const currentRow = btnReferencia.closest('tr');
+                if (currentRow && currentRow.nextSibling) {
+                    tbody.insertBefore(tr, currentRow.nextSibling);
+                } else {
+                    tbody.appendChild(tr);
+                }
+            } else {
+                tbody.appendChild(tr);
+            }
             rowIndex++;
+        }
+
+        // --- AGREGAR FILA DENTRO DEL MODAL ---
+        function agregarFilaModal(lote, minDate = '', maxDate = '', btnReferencia = null) {
+            const modalBody = document.getElementById('modal-body');
+            const tbody = modalBody.querySelector('tbody');
+            if (!tbody) return;
+
+            // ID del formulario activo en el modal (renombrado por openModal)
+            const formId = 'modal-form-masivo-' + lote;
+            
+            const tr = document.createElement('tr');
+            tr.className = 'modal-row align-top hover:bg-gray-50 transition-colors bg-blue-50';
+            
+            const index = 'new_' + modalRowIndex++;
+            const prefix = `nuevas[${index}]`;
+
+            // Construir atributos min y max si existen
+            const minAttr = minDate ? `min="${minDate}"` : '';
+            const maxAttr = maxDate ? `max="${maxDate}"` : '';
+
+            tr.innerHTML = `
+                <td class="p-2">
+                    <input type="date" name="${prefix}[fecha]" form="${formId}" 
+                        class="w-full text-xs border-gray-300 rounded focus:ring-blue-500" 
+                        ${minAttr} ${maxAttr} required>
+                </td>
+                <td class="p-2">
+                    <select name="${prefix}[plataforma_id]" form="${formId}" class="w-full text-xs border-gray-300 rounded focus:ring-blue-500" required>
+                        ${generarOpciones(plataformas)}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <select name="${prefix}[formato_id]" form="${formId}" class="w-full text-xs border-gray-300 rounded focus:ring-blue-500" required>
+                        ${generarOpciones(formatos)}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <textarea name="${prefix}[copy]" form="${formId}" rows="4" class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 resize-y" placeholder="Nuevo copy..."></textarea>
+                </td>
+                <td class="p-2">
+                    <textarea name="${prefix}[arte]" form="${formId}" rows="4" class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 resize-y" placeholder="Nuevo arte..."></textarea>
+                </td>
+                <td class="p-2">
+                    <select name="${prefix}[estatus]" form="${formId}" class="w-full text-xs border-gray-300 rounded focus:ring-blue-500">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Publicado">Publicado</option>
+                        <option value="Reprogramar">Reprogramar</option>
+                    </select>
+                </td>
+                <td class="p-2 text-right align-middle">
+                    <div class="flex items-center justify-end gap-1">
+                        <button type="button" onclick="agregarFilaModal('${lote}', '${minDate}', '${maxDate}', this)" 
+                            class="text-blue-600 hover:text-blue-800 font-bold p-1 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200" title="Insertar fila abajo">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </button>
+                        <button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Cancelar fila">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+            
+            if (btnReferencia) {
+                const currentRow = btnReferencia.closest('tr');
+                if (currentRow && currentRow.nextSibling) {
+                    tbody.insertBefore(tr, currentRow.nextSibling);
+                } else {
+                    tbody.appendChild(tr);
+                }
+            } else {
+                tbody.appendChild(tr);
+            }
+        }
+
+        function resetGenerarTabla() {
+            const btn = document.getElementById('btn-generar-tabla');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Generar Tabla';
+            }
         }
 
         function inicializarTabla() {
@@ -616,6 +895,13 @@
 
             agregarFila(inicio);
             agregarFila(fin);
+            
+            // Deshabilitar botón
+            const btn = document.getElementById('btn-generar-tabla');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Tabla Generada';
+            }
         }
     </script>
     @endpush

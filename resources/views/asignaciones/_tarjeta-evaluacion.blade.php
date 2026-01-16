@@ -1,14 +1,17 @@
+{{-- resources/views/asignaciones/_tarjeta-evaluacion.blade.php --}}
+
 <div class="kanban-card-admin bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-move hover:shadow-md transition"
      draggable="true"
      data-asignacion-id="{{ $asignacion->id }}">
-    
+
     {{-- Prioridad y Estado del Empleado --}}
     <div class="flex items-center justify-between mb-2">
         <span class="px-2 py-1 text-xs font-semibold rounded {{ $asignacion->prioridad_color }}">
             {{ $asignacion->prioridad_texto }}
         </span>
-        <span class="px-2 py-1 text-xs font-semibold rounded 
-            {{ $asignacion->estado_empleado === 'terminada' ? 'bg-green-100 text-green-800' : 
+
+        <span class="px-2 py-1 text-xs font-semibold rounded
+            {{ $asignacion->estado_empleado === 'terminada' ? 'bg-green-100 text-green-800' :
                ($asignacion->estado_empleado === 'en_proceso' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
             {{ ucfirst(str_replace('_', ' ', $asignacion->estado_empleado)) }}
         </span>
@@ -35,6 +38,7 @@
                 {{ $asignacion->tarea->cliente->empresa ?: $asignacion->tarea->cliente->nombre . ' ' . $asignacion->tarea->cliente->apellido_paterno }}
             @endif
         </div>
+
         <div class="flex items-center">
             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
@@ -63,7 +67,8 @@
 
     {{-- Evidencia --}}
     @if($asignacion->evidencia_path)
-        <a href="{{ Storage::url($asignacion->evidencia_path) }}" target="_blank"
+        {{-- ✅ LINK SEGURO (NO Storage::url) --}}
+        <a href="{{ route('asignaciones.verEvidencia', $asignacion) }}" target="_blank"
            class="block text-xs text-blue-600 hover:underline mb-2 flex items-center">
             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd"/>

@@ -94,7 +94,7 @@
                             </div>
                         </a>
 
-                        {{-- ✅ Tarjeta Calendario de Publicaciones (NUEVO) --}}
+                        {{-- ✅ Tarjeta Calendario de Publicaciones --}}
                         <a href="{{ route('calendario.general') }}"
                            class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
                             <div class="p-6 flex items-start gap-4">

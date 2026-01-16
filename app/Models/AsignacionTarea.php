@@ -9,6 +9,11 @@ class AsignacionTarea extends Model
 {
     protected $table = 'asignaciones_tareas';
 
+    // ✅ PK (si realmente es "id" en MySQL)
+    protected $primaryKey = 'id';
+    public $incrementing = true;
+    protected $keyType = 'int';
+
     protected $fillable = [
         'tarea_id',
         'empleado_id',
@@ -38,14 +43,14 @@ class AsignacionTarea extends Model
 
     public function estaVencida()
     {
-        return Carbon::now()->isAfter($this->fecha_limite) && 
-               $this->estado_empleado !== 'terminada' && 
-               $this->estado_admin !== 'completa';
+        return Carbon::now()->isAfter($this->fecha_limite) &&
+            $this->estado_empleado !== 'terminada' &&
+            $this->estado_admin !== 'completa';
     }
 
     public function getPrioridadColorAttribute()
     {
-        return match($this->prioridad) {
+        return match ($this->prioridad) {
             'baja' => 'bg-gray-100 text-gray-800',
             'media' => 'bg-blue-100 text-blue-800',
             'alta' => 'bg-orange-100 text-orange-800',
@@ -56,7 +61,7 @@ class AsignacionTarea extends Model
 
     public function getPrioridadTextoAttribute()
     {
-        return match($this->prioridad) {
+        return match ($this->prioridad) {
             'baja' => 'Baja',
             'media' => 'Media',
             'alta' => 'Alta',
