@@ -88,7 +88,7 @@
                                 {{-- INPUT: El atributo :readonly depende de la variable 'emailLocked' --}}
                                 {{-- La clase dinámica cambia el fondo: gris si está bloqueado, blanco si no --}}
                                 <input type="email" name="correo" 
-                                       value="{{ old('correo', $cliente->user->email ?? '') }}"
+                                       value="{{ $errors->has('correo') ? ($cliente->user->email ?? '') : old('correo', $cliente->user->email ?? '') }}"
                                        :readonly="emailLocked"
                                        :class="emailLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'"
                                        class="block w-full border-gray-300 rounded-md pr-10 focus:ring-indigo-500 focus:border-indigo-500"

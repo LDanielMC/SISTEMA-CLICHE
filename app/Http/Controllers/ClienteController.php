@@ -143,6 +143,8 @@ class ClienteController extends Controller
             'fiscal.telefono_fiscal' => 'nullable|max:30',
             'fiscal.correo_fiscal'   => 'nullable|email|max:255',
             'fiscal.direccion_fiscal'=> 'nullable|max:400',
+        ], [
+            'correo.unique' => 'El correo electrónico ya está registrado en el sistema.',
         ]);
 
         DB::transaction(function () use ($request, $cliente) {

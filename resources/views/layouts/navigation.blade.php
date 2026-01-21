@@ -36,19 +36,42 @@
                             {{ __('Inicio') }}
                         </x-nav-link>
 
-                        <x-nav-link
-                            :href="route('empleados.index')"
-                            :active="request()->routeIs('empleados.*')"
-                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('empleados.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            {{ __('Empleados') }}
-                        </x-nav-link>
-
-                        {{-- Dropdown de Clientes (Incluye Cotizaciones) --}}
+                        {{-- Dropdown de Empleados --}}
                         <div class="relative sm:flex sm:items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
-                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ (request()->routeIs('clientes.*') || request()->routeIs('cotizaciones.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ (request()->routeIs('empleados.*') || request()->routeIs('categorias.*') || request()->routeIs('tareas.*') || request()->routeIs('asignaciones.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                                        <div>{{ __('Empleados') }}</div>
+                                        <div class="ms-1">
+                                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    </button>
+                                </x-slot>
+
+                                <x-slot name="content">
+                                    <x-dropdown-link :href="route('empleados.index')">
+                                        {{ __('Gestión de Empleados') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('categorias.index')">
+                                        {{ __('Catálogo Tareas') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('tareas.index')">
+                                        {{ __('Gestión de Tareas') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('asignaciones.index')">
+                                        {{ __('Asignación de Tareas') }}
+                                    </x-dropdown-link>
+                                </x-slot>
+                            </x-dropdown>
+                        </div>
+
+                        {{-- Dropdown de Clientes --}}
+                        <div class="relative sm:flex sm:items-center">
+                            <x-dropdown align="left" width="48">
+                                <x-slot name="trigger">
+                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ (request()->routeIs('clientes.*') || request()->routeIs('cotizaciones.*') || request()->routeIs('calendario.general') || request()->routeIs('minutas.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
                                         <div>{{ __('Clientes') }}</div>
                                         <div class="ms-1">
                                             <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -65,32 +88,22 @@
                                     <x-dropdown-link :href="route('cotizaciones.index')">
                                         {{ __('Cotizaciones') }}
                                     </x-dropdown-link>
+                                    <x-dropdown-link :href="route('calendario.general')">
+                                        📅 {{ __('Calendario de Publicaciones') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('minutas.index')">
+                                        {{ __('Minutas') }}
+                                    </x-dropdown-link>
                                 </x-slot>
                             </x-dropdown>
                         </div>
 
                         <x-nav-link
-                            :href="route('categorias.index')"
-                            :active="request()->routeIs('categorias.*')"
+                            :href="route('suscripciones.index')"
+                            :active="request()->routeIs('suscripciones.*') || request()->routeIs('categorias-suscripcion.*')"
                             class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('categorias.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            {{ __('Categorías') }}
-                        </x-nav-link>
-
-                        <x-nav-link
-                            :href="route('tareas.index')"
-                            :active="request()->routeIs('tareas.*')"
-                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('tareas.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            {{ __('Tareas') }}
-                        </x-nav-link>
-
-                        <x-nav-link
-                            :href="route('asignaciones.index')"
-                            :active="request()->routeIs('asignaciones.*')"
-                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('asignaciones.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            {{ __('Asignaciones') }}
+                                   {{ (request()->routeIs('suscripciones.*') || request()->routeIs('categorias-suscripcion.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Suscripciones') }}
                         </x-nav-link>
 
                         <x-nav-link
@@ -106,7 +119,7 @@
                             :active="request()->routeIs('eventos.*')"
                             class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
                                    {{ request()->routeIs('eventos.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            📅 {{ __('Calendario') }}
+                            📅 {{ __('Calendario de Eventos') }}
                         </x-nav-link>
 
                         <x-nav-link
