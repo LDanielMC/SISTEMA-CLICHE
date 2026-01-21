@@ -130,6 +130,32 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/backups/{filename}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
     Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\BackupController::class, 'delete'])->name('backups.delete');
     Route::post('/admin/backups/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('backups.restore');
+
+    // REPORTES
+    Route::get('/admin/reportes/cumplimiento', [\App\Http\Controllers\ReporteController::class, 'cumplimiento'])->name('reportes.cumplimiento');
+    Route::get('/admin/reportes/efectividad', [\App\Http\Controllers\ReporteController::class, 'efectividad'])->name('reportes.efectividad');
+    Route::get('/admin/reportes/carga-trabajo', [\App\Http\Controllers\ReporteController::class, 'cargaTrabajo'])->name('reportes.carga_trabajo');
+    Route::get('/admin/reportes/suscripciones', [\App\Http\Controllers\ReporteController::class, 'suscripciones'])->name('reportes.suscripciones');
+    Route::get('/admin/reportes/acuerdos-cliente', [\App\Http\Controllers\ReporteController::class, 'acuerdosCliente'])->name('reportes.acuerdos_cliente');
+    Route::get('/admin/reportes/crecimiento-clientes', [\App\Http\Controllers\ReporteController::class, 'crecimientoClientes'])->name('reportes.crecimiento_clientes');
+
+    // CATEGORÍAS DE SUSCRIPCIÓN
+    Route::resource('categorias-suscripcion', \App\Http\Controllers\CategoriaSuscripcionController::class)
+        ->parameters(['categorias-suscripcion' => 'categoriasSuscripcion']);
+    Route::post('categorias-suscripcion/{categoriasSuscripcion}/reactivar', [\App\Http\Controllers\CategoriaSuscripcionController::class, 'reactivar'])
+        ->name('categorias-suscripcion.reactivar');
+
+    // SUSCRIPCIONES
+    Route::resource('suscripciones', \App\Http\Controllers\SuscripcionController::class)
+        ->parameters(['suscripciones' => 'suscripcion']);
+
+    // RUTAS ADICIONALES PARA SUSCRIPCIONES
+    Route::post('suscripciones/{suscripcion}/reactivar', [\App\Http\Controllers\SuscripcionController::class, 'reactivar'])
+        ->name('suscripciones.reactivar');
+    Route::get('suscripciones/{suscripcion}/renovar', [\App\Http\Controllers\SuscripcionController::class, 'renovarForm'])
+        ->name('suscripciones.renovar.form');
+    Route::post('suscripciones/{suscripcion}/renovar', [\App\Http\Controllers\SuscripcionController::class, 'renovar'])
+        ->name('suscripciones.renovar');
 });
 
 
