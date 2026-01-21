@@ -154,6 +154,15 @@
                                     <x-dropdown-link :href="route('reportes.carga_trabajo')">
                                         {{ __('Carga de Trabajo') }}
                                     </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.suscripciones')">
+                                        {{ __('Suscripciones y Costos') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.acuerdos_cliente')">
+                                        {{ __('Acuerdos por Cliente') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.crecimiento_clientes')">
+                                        {{ __('Crecimiento de Clientes') }}
+                                    </x-dropdown-link>
                                 </x-slot>
                             </x-dropdown>
                         </div>

@@ -279,4 +279,319 @@ class ReporteController extends Controller
 
         return view('admin.reportes.carga_trabajo', compact('reporte', 'fechaInicio', 'fechaFin', 'totalTareasGlobal', 'promedioTareas', 'topEmpleado', 'topCliente'));
     }
+
+    /**
+     * Reporte de costos y proyección de suscripciones.
+     */
+    public function suscripciones(Request $request)
+    {
+        // Filtros
+        $idCategoria = $request->input('id_categoria');
+        $periodicidad = $request->input('periodicidad');
+        $nivelUso = $request->input('nivel_uso');
+        $orden = $request->input('orden', 'dias_restantes'); // Default: próximas a vencer
+        $direccion = $request->input('direccion', 'asc');
+
+        $query = \App\Models\Suscripcion::with('categoria');
+
+        // Aplicar filtros
+        if ($idCategoria) {
+            $query->where('idCategoria', $idCategoria);
+        }
+        if ($periodicidad) {
+            $query->where('periodicidad', $periodicidad);
+        }
+        if ($nivelUso) {
+            $query->where('nivel_uso', $nivelUso);
+        }
+
+        // Obtener datos
+        $suscripciones = $query->get();
+
+        // Ordenamiento (en colección porque dias_restantes es un accessor)
+        if ($orden === 'dias_restantes') {
+            $suscripciones = $direccion === 'asc' 
+                ? $suscripciones->sortBy('dias_restantes') 
+                : $suscripciones->sortByDesc('dias_restantes');
+        } elseif ($orden === 'costo') {
+            $suscripciones = $direccion === 'asc' 
+                ? $suscripciones->sortBy('costo') 
+                : $suscripciones->sortByDesc('costo');
+        } else {
+            // Orden por defecto DB
+            $suscripciones = $direccion === 'asc' 
+                ? $suscripciones->sortBy($orden) 
+                : $suscripciones->sortByDesc($orden);
+        }
+
+        // === MÉTRICAS AVANZADAS PARA TOMA DE DECISIONES ===
+        
+        // 1. Totales por periodicidad
+        $totalGastoMensual = $suscripciones->where('periodicidad', 'mensual')->sum('costo');
+        $totalGastoAnual = $suscripciones->where('periodicidad', 'anual')->sum('costo');
+        
+        // 2. Proyección anual (mensualizar todo para comparar)
+        $proyeccionAnual = $suscripciones->sum(function ($sub) {
+            return $sub->periodicidad === 'mensual' ? $sub->costo * 12 : $sub->costo;
+        });
+        
+        // 3. Promedio de costo por suscripción
+        $promedioCosto = $suscripciones->avg('costo');
+        
+        // 4. Alertas de vencimiento
+        $vencenEn7Dias = $suscripciones->filter(function ($sub) {
+            return $sub->dias_restantes !== null && $sub->dias_restantes >= 0 && $sub->dias_restantes <= 7;
+        })->count();
+        
+        $vencenEn30Dias = $suscripciones->filter(function ($sub) {
+            return $sub->dias_restantes !== null && $sub->dias_restantes >= 0 && $sub->dias_restantes <= 30;
+        })->count();
+        
+        $vencidas = $suscripciones->filter(function ($sub) {
+            return $sub->dias_restantes !== null && $sub->dias_restantes < 0;
+        })->count();
+        
+        // 5. Distribución por nivel de uso
+        $distribucionUso = [
+            'Alto' => $suscripciones->where('nivel_uso', 'alto')->count(),
+            'Medio' => $suscripciones->where('nivel_uso', 'medio')->count(),
+            'Bajo' => $suscripciones->where('nivel_uso', 'bajo')->count(),
+        ];
+        
+        // 6. Distribución por estado
+        $distribucionEstado = [
+            'OK' => $suscripciones->filter(fn($s) => $s->dias_restantes === null || $s->dias_restantes > 30)->count(),
+            'Por Vencer' => $vencenEn30Dias - $vencenEn7Dias,
+            'Crítico' => $vencenEn7Dias,
+            'Vencidas' => $vencidas,
+        ];
+        
+        // 7. Suscripciones a optimizar (bajo uso con costo alto)
+        $costoAlto = $suscripciones->avg('costo') * 1.2; // 20% por encima del promedio
+        $aOptimizar = $suscripciones->filter(function ($sub) use ($costoAlto) {
+            return $sub->nivel_uso === 'bajo' && $sub->costo >= $costoAlto;
+        })->count();
+        
+        // 8. Gráfica principal: Gasto por Categoría (mensualizado)
+        $datosGrafica = $suscripciones->groupBy('categoria.nombre')->map(function ($grupo) {
+            return $grupo->sum(function ($sub) {
+                return $sub->periodicidad === 'mensual' ? $sub->costo : $sub->costo / 12;
+            });
+        });
+        
+        // 9. Análisis de eficiencia: Costo promedio por nivel de uso
+        $costoPromedioUso = [
+            'Alto' => $suscripciones->where('nivel_uso', 'alto')->avg('costo') ?? 0,
+            'Medio' => $suscripciones->where('nivel_uso', 'medio')->avg('costo') ?? 0,
+            'Bajo' => $suscripciones->where('nivel_uso', 'bajo')->avg('costo') ?? 0,
+        ];
+        
+        // Exportación PDF
+        if ($request->has('export') && $request->export === 'pdf') {
+            $pdf = \PDF::loadView('admin.reportes.pdf_suscripciones', compact(
+                'suscripciones', 
+                'totalGastoMensual', 
+                'totalGastoAnual',
+                'proyeccionAnual',
+                'promedioCosto',
+                'vencenEn7Dias',
+                'vencenEn30Dias',
+                'vencidas',
+                'distribucionUso',
+                'distribucionEstado',
+                'aOptimizar',
+                'datosGrafica'
+            ));
+            return $pdf->download('reporte-suscripciones-' . date('Y-m-d') . '.pdf');
+        }
+
+        // Listas para filtros
+        $categorias = \App\Models\CategoriaSuscripcion::orderBy('nombre')->get();
+
+        return view('admin.reportes.suscripciones', compact(
+            'suscripciones', 
+            'categorias', 
+            'datosGrafica', 
+            'totalGastoMensual', 
+            'totalGastoAnual',
+            'proyeccionAnual',
+            'promedioCosto',
+            'vencenEn7Dias',
+            'vencenEn30Dias',
+            'vencidas',
+            'distribucionUso',
+            'distribucionEstado',
+            'aOptimizar',
+            'costoPromedioUso'
+        ));
+    }
+
+    /**
+     * Reporte de acuerdos por cliente.
+     */
+    public function acuerdosCliente(Request $request)
+    {
+        $idCliente = $request->input('id_cliente');
+
+        // Query base: obtener clientes con sus minutas y acuerdos
+        $query = \App\Models\Cliente::with(['minutas.acuerdos'])
+            ->where('estatus', 'activo');
+
+        if ($idCliente) {
+            $query->where('id_cliente', $idCliente);
+        }
+
+        $clientes = $query->get();
+
+        // Calcular estadísticas por cliente
+        $datosClientes = $clientes->map(function ($cliente) {
+            $acuerdos = $cliente->minutas->flatMap(fn($m) => $m->acuerdos);
+            $totalAcuerdos = $acuerdos->count();
+            $concluidos = $acuerdos->where('estatus', 'concluido')->count();
+            $pendientes = $acuerdos->where('estatus', 'pendiente')->count();
+            $porcentajeConcluido = $totalAcuerdos > 0 ? round(($concluidos / $totalAcuerdos) * 100, 1) : 0;
+
+            return [
+                'cliente' => $cliente,
+                'total_acuerdos' => $totalAcuerdos,
+                'concluidos' => $concluidos,
+                'pendientes' => $pendientes,
+                'porcentaje_concluido' => $porcentajeConcluido,
+                'acuerdos_pendientes' => $acuerdos->where('estatus', 'pendiente')->values()
+            ];
+        })->filter(fn($d) => $d['total_acuerdos'] > 0); // Solo clientes con acuerdos
+
+        // Datos para gráfica de pastel (si hay un cliente seleccionado)
+        $datosGrafica = null;
+        if ($idCliente && $datosClientes->isNotEmpty()) {
+            $data = $datosClientes->first();
+            $datosGrafica = [
+                'Concluidos' => $data['concluidos'],
+                'Pendientes' => $data['pendientes']
+            ];
+        }
+
+        // Totales generales
+        $totalAcuerdosGeneral = $datosClientes->sum('total_acuerdos');
+        $totalConcluidosGeneral = $datosClientes->sum('concluidos');
+        $totalPendientesGeneral = $datosClientes->sum('pendientes');
+        $porcentajeGeneral = $totalAcuerdosGeneral > 0 
+            ? round(($totalConcluidosGeneral / $totalAcuerdosGeneral) * 100, 1) 
+            : 0;
+
+        // Lista de clientes para filtro
+        $clientesLista = \App\Models\Cliente::where('estatus', 'activo')
+            ->orderBy('empresa')
+            ->get();
+
+        return view('admin.reportes.acuerdos_cliente', compact(
+            'datosClientes',
+            'datosGrafica',
+            'clientesLista',
+            'idCliente',
+            'totalAcuerdosGeneral',
+            'totalConcluidosGeneral',
+            'totalPendientesGeneral',
+            'porcentajeGeneral'
+        ));
+    }
+
+    /**
+     * Reporte de crecimiento de clientes.
+     */
+    public function crecimientoClientes(Request $request)
+    {
+        $anio = $request->input('anio', date('Y'));
+
+        // Clientes al inicio del año
+        $clientesInicioAnio = \App\Models\Cliente::where(function($q) use ($anio) {
+            $q->where('fecha_registro', '<', "$anio-01-01")
+              ->where(function($q2) use ($anio) {
+                  $q2->whereNull('fecha_baja')
+                     ->orWhere('fecha_baja', '>=', "$anio-01-01");
+              });
+        })->count();
+
+        // Datos mensuales
+        $meses = [];
+        $datosGrafica = [
+            'labels' => [],
+            'altas' => [],
+            'bajas' => [],
+            'total' => []
+        ];
+
+        $totalAcumulado = $clientesInicioAnio;
+        $totalAltasAnio = 0;
+        $totalBajasAnio = 0;
+
+        for ($mes = 1; $mes <= 12; $mes++) {
+            $nombreMes = \Carbon\Carbon::create($anio, $mes, 1)->locale('es')->monthName;
+            $nombreMesCorto = \Carbon\Carbon::create($anio, $mes, 1)->locale('es')->shortMonthName;
+            
+            // Altas en el mes
+            $altas = \App\Models\Cliente::whereYear('fecha_registro', $anio)
+                ->whereMonth('fecha_registro', $mes)
+                ->count();
+
+            // Bajas en el mes
+            $bajas = \App\Models\Cliente::whereYear('fecha_baja', $anio)
+                ->whereMonth('fecha_baja', $mes)
+                ->count();
+
+            $totalAcumulado = $totalAcumulado + $altas - $bajas;
+            $totalAltasAnio += $altas;
+            $totalBajasAnio += $bajas;
+
+            $meses[] = [
+                'mes' => ucfirst($nombreMes),
+                'altas' => $altas,
+                'bajas' => $bajas,
+                'total' => $totalAcumulado
+            ];
+
+            $datosGrafica['labels'][] = ucfirst($nombreMesCorto);
+            $datosGrafica['altas'][] = $altas;
+            $datosGrafica['bajas'][] = $bajas;
+            $datosGrafica['total'][] = $totalAcumulado;
+        }
+
+        // Clientes al final del año
+        $clientesFinalAnio = $totalAcumulado;
+
+        // Crecimiento neto y porcentaje
+        $crecimientoNeto = $clientesFinalAnio - $clientesInicioAnio;
+        $porcentajeCrecimiento = $clientesInicioAnio > 0 
+            ? round(($crecimientoNeto / $clientesInicioAnio) * 100, 2) 
+            : 0;
+
+        // Mejor y peor mes
+        $mejorMes = collect($meses)->sortByDesc('altas')->first();
+        $peorMes = collect($meses)->filter(fn($m) => $m['bajas'] > 0)->sortByDesc('bajas')->first();
+
+        // Lista de años disponibles
+        $aniosDisponibles = \App\Models\Cliente::selectRaw('DISTINCT YEAR(fecha_registro) as anio')
+            ->whereNotNull('fecha_registro')
+            ->orderBy('anio', 'desc')
+            ->pluck('anio');
+
+        if ($aniosDisponibles->isEmpty()) {
+            $aniosDisponibles = collect([date('Y')]);
+        }
+
+        return view('admin.reportes.crecimiento_clientes', compact(
+            'anio',
+            'clientesInicioAnio',
+            'clientesFinalAnio',
+            'totalAltasAnio',
+            'totalBajasAnio',
+            'crecimientoNeto',
+            'porcentajeCrecimiento',
+            'meses',
+            'datosGrafica',
+            'mejorMes',
+            'peorMes',
+            'aniosDisponibles'
+        ));
+    }
 }
