@@ -122,6 +122,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/backups/{filename}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
     Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\BackupController::class, 'delete'])->name('backups.delete');
     Route::post('/admin/backups/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('backups.restore');
+
+    // REPORTES
+    Route::get('/admin/reportes/cumplimiento', [\App\Http\Controllers\ReporteController::class, 'cumplimiento'])->name('reportes.cumplimiento');
+    Route::get('/admin/reportes/efectividad', [\App\Http\Controllers\ReporteController::class, 'efectividad'])->name('reportes.efectividad');
+    Route::get('/admin/reportes/carga-trabajo', [\App\Http\Controllers\ReporteController::class, 'cargaTrabajo'])->name('reportes.carga_trabajo');
 });
 
 

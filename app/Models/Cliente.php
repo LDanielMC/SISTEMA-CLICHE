@@ -42,4 +42,9 @@ class Cliente extends Model
         return $this->hasOne(InfoFiscal::class, 'id_cliente', 'id_cliente');
     }
 
+    public function cotizaciones()
+    {
+        return $this->hasMany(Cotizacion::class, 'id_cliente', 'id_cliente');
+    }
+
 }
