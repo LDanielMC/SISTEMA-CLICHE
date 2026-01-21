@@ -115,6 +115,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // BRIEFS / FORMULARIOS
     Route::resource('briefs', \App\Http\Controllers\BriefController::class);
+
+    // RESPALDOS DE BASE DE DATOS
+    Route::get('/admin/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
+    Route::post('/admin/backups/create', [\App\Http\Controllers\BackupController::class, 'create'])->name('backups.create');
+    Route::get('/admin/backups/{filename}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
+    Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\BackupController::class, 'delete'])->name('backups.delete');
+    Route::post('/admin/backups/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('backups.restore');
 });
 
 
