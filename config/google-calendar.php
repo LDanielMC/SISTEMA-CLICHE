@@ -24,6 +24,8 @@ return [
     'scopes' => [
         'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/forms.body', // Escritura y lectura de estructura
+        'https://www.googleapis.com/auth/forms.responses.readonly', // Leer respuestas
     ],
     
     // Configuración de sincronización

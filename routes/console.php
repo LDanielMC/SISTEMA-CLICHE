@@ -15,3 +15,6 @@ Artisan::command('inspire', function () {
 //     ->everyFiveMinutes()
 //     ->withoutOverlapping()
 //     ->name('enviar-recordatorios-eventos');
+
+// Programar verificación de Briefs diariamente a las 9:00 AM
+Schedule::command('briefs:check-status')->dailyAt('09:00');

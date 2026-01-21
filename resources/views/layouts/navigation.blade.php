@@ -94,6 +94,14 @@
                         </x-nav-link>
 
                         <x-nav-link
+                            :href="route('briefs.index')"
+                            :active="request()->routeIs('briefs.*')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('briefs.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            📋 {{ __('Briefs') }}
+                        </x-nav-link>
+
+                        <x-nav-link
                             :href="route('eventos.index')"
                             :active="request()->routeIs('eventos.*')"
                             class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
@@ -371,6 +379,12 @@
 
                 const userRol = '{{ auth()->user()->rol }}';
 
+                // Redirección basada en datos de la notificación
+                if (notif.url) {
+                    window.open(notif.url, '_blank'); // Abrir URL externa (ej. Google Forms)
+                    return;
+                }
+
                 if (userRol === 'administrador' || userRol === 'admin') {
                     if (notif.asignacion_tarea && notif.asignacion_tarea.empleado) {
                         const empleadoId = notif.asignacion_tarea.empleado.id_empleado;
@@ -380,6 +394,8 @@
                     }
                 } else if (userRol === 'empleado') {
                     window.location.href = '/mis-tareas';
+                } else if (userRol === 'cliente') {
+                     window.location.href = '/cliente/dashboard';
                 }
             },
 
@@ -450,7 +466,8 @@
                     'tarea_evaluada_completa': '🎉',
                     'tarea_evaluada_parcial': '⚠️',
                     'tarea_evaluada_incompleta': '❌',
-                    'tarea_evaluada': '📊'
+                    'tarea_evaluada': '📊',
+                    'alerta': '⏰'
                 };
                 return iconos[tipo] || '🔔';
             },

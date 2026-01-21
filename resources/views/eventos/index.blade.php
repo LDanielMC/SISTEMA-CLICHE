@@ -101,7 +101,9 @@
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Sin cliente</option>
                             @foreach($clientes as $cliente)
-                                <option value="{{ $cliente->id_cliente }}">{{ $cliente->nombre }}</option>
+                                <option value="{{ $cliente->id_cliente }}">
+                                    {{ $cliente->nombre }} @if($cliente->empresa) - {{ $cliente->empresa }} @endif
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -455,23 +457,16 @@
         const container = document.getElementById('participantesContainer');
         const index = participanteIndex++;
         
-        const tipo = datos?.tipo || 'externo';
         const nombre = datos?.nombre || '';
         const correo = datos?.correo || '';
-        const referenciaId = datos?.referencia_id || '';
         
         const html = `
             <div class="participante-item flex gap-2" data-index="${index}">
-                <select name="participantes[${index}][tipo]" class="flex-1 px-2 py-1 border rounded" onchange="cambiarTipoParticipante(${index})">
-                    <option value="externo" ${tipo === 'externo' ? 'selected' : ''}>Externo</option>
-                    <option value="empleado" ${tipo === 'empleado' ? 'selected' : ''}>Empleado</option>
-                    <option value="cliente" ${tipo === 'cliente' ? 'selected' : ''}>Cliente</option>
-                </select>
-                <input type="text" name="participantes[${index}][nombre]" placeholder="Nombre" required
-                       value="${nombre}" class="flex-1 px-2 py-1 border rounded participante-nombre-${index}">
-                <input type="email" name="participantes[${index}][correo]" placeholder="Correo" required
-                       value="${correo}" class="flex-1 px-2 py-1 border rounded participante-correo-${index}">
-                <input type="hidden" name="participantes[${index}][referencia_id]" value="${referenciaId}" class="participante-ref-${index}">
+                <input type="hidden" name="participantes[${index}][tipo]" value="externo">
+                <input type="text" name="participantes[${index}][nombre]" placeholder="Nombre del participante" required
+                       value="${nombre}" class="flex-1 px-2 py-1 border rounded">
+                <input type="email" name="participantes[${index}][correo]" placeholder="Correo electrónico" required
+                       value="${correo}" class="flex-1 px-2 py-1 border rounded">
                 <button type="button" onclick="eliminarParticipante(${index})" 
                         class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
                     ✕

@@ -22,6 +22,7 @@ class NotificacionController extends Controller
                     'tipo' => $notif->tipo,
                     'titulo' => $notif->titulo,
                     'mensaje' => $notif->mensaje,
+                    'url' => $notif->url,
                     'leida' => $notif->leida,
                     'created_at' => $notif->created_at,
                     'asignacion_tarea' => $notif->asignacionTarea ? [
