@@ -36,12 +36,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // --- 3. RUTAS PARA CLIENTE ---
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/cliente/dashboard', function () {
-        if (Auth::user()->rol !== 'cliente') {
-            abort(403, 'No autorizado.');
-        }
-        return view('portal_cliente.dashboard');
-    })->name('cliente.dashboard');
+    Route::get('/cliente/dashboard', [\App\Http\Controllers\PortalClienteController::class, 'dashboard'])
+        ->name('cliente.dashboard');
 });
 
 
@@ -116,6 +112,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/calendario/plataformas/{id}', [CalendarioConfigController::class, 'destroyPlataforma'])->name('plataformas.destroy');
     Route::post('/calendario/formatos', [CalendarioConfigController::class, 'storeFormato'])->name('formatos.store');
     Route::delete('/calendario/formatos/{id}', [CalendarioConfigController::class, 'destroyFormato'])->name('formatos.destroy');
+
+    // BRIEFS / FORMULARIOS
+    Route::resource('briefs', \App\Http\Controllers\BriefController::class);
 });
 
 
