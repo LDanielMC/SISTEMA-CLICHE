@@ -8,6 +8,7 @@ use Google\Service\Calendar\Event;
 use Google\Service\Calendar\EventDateTime;
 use App\Models\Evento;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class GoogleCalendarService
 {
@@ -165,7 +166,7 @@ class GoogleCalendarService
 
             return $createdEvent;
         } catch (\Exception $e) {
-            \Log::error('Error al crear evento en Google Calendar: ' . $e->getMessage());
+            Log::error('Error al crear evento en Google Calendar: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -238,7 +239,7 @@ class GoogleCalendarService
 
             return $updatedEvent;
         } catch (\Exception $e) {
-            \Log::error('Error al actualizar evento en Google Calendar: ' . $e->getMessage());
+            Log::error('Error al actualizar evento en Google Calendar: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -255,7 +256,7 @@ class GoogleCalendarService
             
             return true;
         } catch (\Exception $e) {
-            \Log::error('Error al eliminar evento de Google Calendar: ' . $e->getMessage());
+            Log::error('Error al eliminar evento de Google Calendar: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -339,7 +340,7 @@ class GoogleCalendarService
 
             return $events;
         } catch (\Exception $e) {
-            \Log::error('Error al sincronizar desde Google Calendar: ' . $e->getMessage());
+            Log::error('Error al sincronizar desde Google Calendar: ' . $e->getMessage());
             return [];
         }
     }
