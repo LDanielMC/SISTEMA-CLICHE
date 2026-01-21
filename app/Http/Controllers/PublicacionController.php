@@ -9,6 +9,7 @@ use App\Models\Formato;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class PublicacionController extends Controller
 {
@@ -19,12 +20,54 @@ class PublicacionController extends Controller
         $eventosFormateados = $eventos->map(function ($evento) {
             return [
                 'id' => $evento->idPublicacion,
-                'title' => ($evento->cliente?->nombre ?? 'Cliente') . ' - ' . ($evento->plataforma?->nombre ?? 'Plataforma'),
+                'title' => (($evento->cliente?->empresa ?: $evento->cliente?->nombre) ?? 'Cliente') . ' - ' . ($evento->formato?->nombre ?? 'Formato'),
                 'start' => $evento->fecha->format('Y-m-d'),
                 'color' => $this->getColorPorEstatus($evento->estatus),
                 'extendedProps' => [
                     'estatus' => $evento->estatus,
-                    'formato' => $evento->formato?->nombre ?? ''
+                    'formato' => $evento->formato?->nombre ?? '',
+                    'plataforma' => $evento->plataforma?->nombre ?? '',
+                    'cliente_nombre' => ($evento->cliente?->empresa ?: $evento->cliente?->nombre) ?? 'Cliente',
+                    'copy' => $evento->copy,
+                    'arte' => $evento->arte,
+                ]
+            ];
+        });
+
+        return view('calendario.general', compact('eventosFormateados'));
+    }
+
+    public function clientDashboard()
+    {
+        if (Auth::user()->rol !== 'cliente') {
+            abort(403, 'No autorizado.');
+        }
+
+        $user = Auth::user();
+        // Busca el cliente asociado (asumiendo relación o coincidencia por email)
+        $cliente = $user->cliente ?? Cliente::where('email', $user->email)->first();
+
+        if (!$cliente) {
+            return view('calendario.general', ['eventosFormateados' => []]);
+        }
+
+        $eventos = Publicacion::where('cliente_id', $cliente->id_cliente)
+            ->with(['plataforma', 'formato'])
+            ->get();
+
+        $eventosFormateados = $eventos->map(function ($evento) {
+            return [
+                'id' => $evento->idPublicacion,
+                'title' => ($evento->formato?->nombre ?? 'Publicación') . ($evento->plataforma ? ' (' . $evento->plataforma->nombre . ')' : ''),
+                'start' => $evento->fecha->format('Y-m-d'),
+                'color' => $this->getColorPorEstatus($evento->estatus),
+                'extendedProps' => [
+                    'estatus' => $evento->estatus,
+                    'formato' => $evento->formato?->nombre ?? '',
+                    'plataforma' => $evento->plataforma?->nombre ?? '',
+                    'cliente_nombre' => ($evento->cliente?->empresa ?: $evento->cliente?->nombre) ?? 'Cliente',
+                    'copy' => $evento->copy,
+                    'arte' => $evento->arte,
                 ]
             ];
         });

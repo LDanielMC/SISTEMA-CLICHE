@@ -15,11 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-            'rol' => 'admin',
-            'email_verified_at' => now(),
+        // Ejecutar seeders en orden
+        $this->call([
+            UserSeeder::class,
+            EmpleadoSeeder::class,
+            ClienteSeeder::class,
+            CategoriaTareaSeeder::class,
+            CategoriaSuscripcionSeeder::class,
         ]);
     }
 }

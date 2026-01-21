@@ -26,11 +26,28 @@ echo "- Hora: {$evento->hora_inicio} - {$evento->hora_fin}\n";
 echo "- Ya sincronizado: " . ($evento->sincronizado_google ? 'SÍ' : 'NO') . "\n\n";
 
 try {
+    // DEBUG: Verificar configuración
+    $tokenPath = config('google-calendar.token_path');
+    echo "🔍 DEBUG - Información de autenticación:\n";
+    echo "- Ruta del token: {$tokenPath}\n";
+    echo "- Archivo existe: " . (file_exists($tokenPath) ? '✅ SÍ' : '❌ NO') . "\n";
+    
+    if (file_exists($tokenPath)) {
+        echo "- Tamaño del archivo: " . filesize($tokenPath) . " bytes\n";
+        echo "- Permisos: " . substr(sprintf('%o', fileperms($tokenPath)), -4) . "\n";
+        echo "- Puede leer: " . (is_readable($tokenPath) ? '✅ SÍ' : '❌ NO') . "\n";
+    }
+    echo "\n";
+    
     $service = new GoogleCalendarService();
     
     if (!$service->isAuthenticated()) {
         echo "❌ ERROR: Aplicación no autenticada con Google\n";
-        echo "👉 Visita: http://127.0.0.1:8000/google/auth\n";
+        echo "\n📋 Acciones a realizar:\n";
+        echo "1. Verifica que el archivo token existe en: {$tokenPath}\n";
+        echo "2. Si no existe, visita: http://127.0.0.1:8000/google/auth\n";
+        echo "3. Verifica que el archivo tiene permisos de lectura\n";
+        echo "\n💡 Ejecuta: chmod 644 {$tokenPath}\n";
         exit(1);
     }
     

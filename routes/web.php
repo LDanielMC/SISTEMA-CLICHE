@@ -4,6 +4,7 @@ use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\CotizacionController;
+use App\Http\Controllers\MinutaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\TareaController;
 use App\Http\Controllers\AsignacionTareaController;
@@ -36,9 +37,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // --- 3. RUTAS PARA CLIENTE ---
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/cliente/dashboard', [\App\Http\Controllers\PortalClienteController::class, 'dashboard'])
+
+        Route::get('/cliente/dashboard', [\App\Http\Controllers\PortalClienteController::class, 'dashboard'])
         ->name('cliente.dashboard');
-});
+
+    });
 
 
 // --- 4. RUTAS SOLO PARA ADMIN ---
@@ -63,6 +66,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/cotizaciones/search', [CotizacionController::class, 'search'])->name('cotizaciones.search');
     Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf');
     Route::resource('cotizaciones', CotizacionController::class)->parameters(['cotizaciones' => 'cotizacion']);
+
+    // MINUTAS
+    Route::get('/minutas/search', [MinutaController::class, 'search'])->name('minutas.search');
+    Route::resource('minutas', MinutaController::class)->parameters(['minutas' => 'minuta']);
 
     // CATEGORÍAS
     Route::resource('categorias', CategoriaController::class)->except(['show']);
@@ -113,6 +120,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/calendario/formatos', [CalendarioConfigController::class, 'storeFormato'])->name('formatos.store');
     Route::delete('/calendario/formatos/{id}', [CalendarioConfigController::class, 'destroyFormato'])->name('formatos.destroy');
 
+
     // BRIEFS / FORMULARIOS
     Route::resource('briefs', \App\Http\Controllers\BriefController::class);
 
@@ -122,11 +130,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/backups/{filename}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
     Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\BackupController::class, 'delete'])->name('backups.delete');
     Route::post('/admin/backups/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('backups.restore');
-
-    // REPORTES
-    Route::get('/admin/reportes/cumplimiento', [\App\Http\Controllers\ReporteController::class, 'cumplimiento'])->name('reportes.cumplimiento');
-    Route::get('/admin/reportes/efectividad', [\App\Http\Controllers\ReporteController::class, 'efectividad'])->name('reportes.efectividad');
-    Route::get('/admin/reportes/carga-trabajo', [\App\Http\Controllers\ReporteController::class, 'cargaTrabajo'])->name('reportes.carga_trabajo');
 });
 
 
@@ -158,5 +161,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/google/callback', [\App\Http\Controllers\EventoController::class, 'googleCallback'])->name('google.callback');
     Route::get('/google/status', [\App\Http\Controllers\EventoController::class, 'googleStatus'])->name('google.status');
 });
+
+
 
 require __DIR__.'/auth.php';
