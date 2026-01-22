@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Brief;
 use App\Models\Notificacion;
+use App\Models\Cliente;
 use App\Services\GoogleFormsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class BriefController extends Controller
 {
@@ -22,7 +24,7 @@ class BriefController extends Controller
      */
     public function index()
     {
-        $briefs = Brief::latest()->get();
+        $briefs = Brief::latest()->withCount('clientes')->get();
         return view('briefs.index', compact('briefs'));
     }
 
@@ -31,8 +33,7 @@ class BriefController extends Controller
      */
     public function create()
     {
-        $clientes = \App\Models\Cliente::where('estatus', 'activo')->orderBy('nombre')->get();
-        return view('briefs.create', compact('clientes'));
+        return view('briefs.create');
     }
 
     /**
@@ -47,7 +48,6 @@ class BriefController extends Controller
             $request->validate([
                 'titulo' => 'required|string|max:250',
                 'descripcion' => 'nullable|string',
-                'id_cliente' => 'nullable|exists:clientes,id_cliente',
                 'questions' => 'nullable|array',
             ]);
 
@@ -62,33 +62,14 @@ class BriefController extends Controller
                 $formId = $createdForm->getFormId();
                 $formUrl = $createdForm->getResponderUri() ?? "https://docs.google.com/forms/d/{$formId}/viewform";
 
-                $brief = Brief::create([
+                Brief::create([
                     'google_form_id' => $formId,
                     'titulo' => $request->titulo,
                     'descripcion' => $request->descripcion,
                     'form_url' => $formUrl,
-                    'id_cliente' => $request->id_cliente,
-                    'estado' => $request->id_cliente ? 'pendiente' : 'pendiente', // Si hay cliente, inicia pendiente
-                    'fecha_envio' => $request->id_cliente ? now() : null,
                 ]);
 
-                // Enviar correo si hay cliente asignado
-                if ($brief->id_cliente && $brief->cliente && $brief->cliente->user) {
-                     \Illuminate\Support\Facades\Mail::to($brief->cliente->user->email)
-                        ->send(new \App\Mail\BriefAssigned($brief));
-                     
-                     // Crear notificación en sistema
-                     Notificacion::create([
-                        'user_id' => $brief->cliente->user->id,
-                        'tipo' => 'alerta',
-                        'titulo' => 'Nuevo Formulario Asignado',
-                        'mensaje' => "Se te ha asignado: {$brief->titulo}. Por favor respóndelo pronto.",
-                        'url' => $brief->form_url,
-                        'leida' => false,
-                     ]);
-                }
-
-                return redirect()->route('briefs.index')->with('success', 'Nuevo formulario creado en Google, registrado y asignado exitosamente.');
+                return redirect()->route('briefs.index')->with('success', 'Nuevo formulario creado en Google y registrado exitosamente.');
 
             } catch (\Exception $e) {
                 Log::error('Error al crear brief: ' . $e->getMessage());
@@ -99,7 +80,6 @@ class BriefController extends Controller
             // --- LÓGICA ORIGINAL: VINCULAR EXISTENTE ---
             $request->validate([
                 'google_form_url' => 'required|string',
-                'id_cliente' => 'nullable|exists:clientes,id_cliente',
             ]);
 
             $formId = $this->googleFormsService->extractFormIdFromUrl($request->google_form_url);
@@ -130,33 +110,14 @@ class BriefController extends Controller
                 // Construir URL de respuesta si no se proporcionó una explícita
                 $formUrl = $formDetails->getResponderUri() ?? "https://docs.google.com/forms/d/{$formId}/viewform";
 
-                $brief = Brief::create([
+                Brief::create([
                     'google_form_id' => $formId,
                     'titulo' => $titulo,
                     'descripcion' => $descripcion,
                     'form_url' => $formUrl,
-                    'id_cliente' => $request->id_cliente,
-                    'estado' => $request->id_cliente ? 'pendiente' : 'pendiente',
-                    'fecha_envio' => $request->id_cliente ? now() : null,
                 ]);
 
-                // Enviar correo si hay cliente asignado
-                if ($brief->id_cliente && $brief->cliente && $brief->cliente->user) {
-                     \Illuminate\Support\Facades\Mail::to($brief->cliente->user->email)
-                        ->send(new \App\Mail\BriefAssigned($brief));
-                     
-                     // Crear notificación en sistema
-                     Notificacion::create([
-                        'user_id' => $brief->cliente->user->id,
-                        'tipo' => 'alerta',
-                        'titulo' => 'Nuevo Formulario Asignado',
-                        'mensaje' => "Se te ha asignado: {$brief->titulo}. Por favor respóndelo pronto.",
-                        'url' => $brief->form_url,
-                        'leida' => false,
-                     ]);
-                }
-
-                return redirect()->route('briefs.index')->with('success', 'Formulario registrado y asignado exitosamente.');
+                return redirect()->route('briefs.index')->with('success', 'Formulario registrado exitosamente.');
 
             } catch (\Exception $e) {
                 Log::error('Error al registrar brief: ' . $e->getMessage());
@@ -190,8 +151,7 @@ class BriefController extends Controller
      */
     public function edit(Brief $brief)
     {
-        $clientes = \App\Models\Cliente::where('estatus', 'activo')->orderBy('nombre')->get();
-        return view('briefs.edit', compact('brief', 'clientes'));
+        return view('briefs.edit', compact('brief'));
     }
 
     /**
@@ -203,49 +163,9 @@ class BriefController extends Controller
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'form_url' => 'nullable|url',
-            'id_cliente' => 'nullable|exists:clientes,id_cliente',
         ]);
 
-        $previousClienteId = $brief->id_cliente;
-        $data = $request->only(['titulo', 'descripcion', 'form_url', 'id_cliente']);
-        
-        // Si se asigna un cliente por primera vez O se cambia de cliente
-        // Reiniciamos el estado y la fecha de envío para que cuente como una nueva asignación
-        if ($request->id_cliente && ($request->id_cliente != $previousClienteId || !$previousClienteId)) {
-            $data['estado'] = 'pendiente';
-            $data['fecha_envio'] = now();
-        }
-
-        $brief->update($data);
-
-        // Notificar si se asignó a un nuevo cliente (o cambió)
-        if ($request->id_cliente && $request->id_cliente != $previousClienteId) {
-             // Recargar relación para asegurar que tenemos el cliente nuevo
-             $brief->load('cliente.user');
-             
-             if ($brief->cliente && $brief->cliente->user) {
-                 // 1. Correo
-                 try {
-                    \Illuminate\Support\Facades\Mail::to($brief->cliente->user->email)
-                        ->send(new \App\Mail\BriefAssigned($brief));
-                 } catch (\Exception $e) {
-                     Log::error('Error enviando correo de asignación en update: ' . $e->getMessage());
-                 }
-
-                 // 2. Notificación Sistema
-                 Notificacion::create([
-                    'user_id' => $brief->cliente->user->id,
-                    'tipo' => 'alerta',
-                    'titulo' => 'Nuevo Formulario Asignado',
-                    'mensaje' => "Se te ha asignado: {$brief->titulo}. Por favor respóndelo pronto.",
-                    'url' => $brief->form_url,
-                    'leida' => false,
-                 ]);
-             }
-        }
-
-        // Opcional: Si cambió el cliente, podríamos enviar notificación, 
-        // pero por ahora solo actualizamos la referencia.
+        $brief->update($request->only(['titulo', 'descripcion', 'form_url']));
 
         return redirect()->route('briefs.index')->with('success', 'Formulario actualizado exitosamente.');
     }
@@ -257,5 +177,75 @@ class BriefController extends Controller
     {
         $brief->delete();
         return redirect()->route('briefs.index')->with('success', 'Formulario eliminado exitosamente.');
+    }
+
+    /**
+     * Muestra la vista para asignar clientes al brief.
+     */
+    public function assign(Brief $brief)
+    {
+        $clientes = Cliente::where('estatus', 'activo')
+                           ->whereDoesntHave('briefs', function($q) use ($brief) {
+                               $q->where('brief_id', $brief->id);
+                           })
+                           ->orderBy('nombre')
+                           ->get();
+
+        $brief->load('clientes.user');
+
+        return view('briefs.assign', compact('brief', 'clientes'));
+    }
+
+    /**
+     * Almacena la asignación de un cliente al brief.
+     */
+    public function storeAssignment(Request $request, Brief $brief)
+    {
+        $request->validate([
+            'id_cliente' => 'required|exists:clientes,id_cliente',
+        ]);
+
+        $cliente = Cliente::with('user')->findOrFail($request->id_cliente);
+
+        // Verificar si ya está asignado
+        if ($brief->clientes()->where('cliente_id', $cliente->id_cliente)->exists()) {
+            return back()->with('error', 'El cliente ya tiene asignado este brief.');
+        }
+
+        // Asignar
+        $brief->clientes()->attach($cliente->id_cliente, [
+            'estado' => 'pendiente',
+            'fecha_envio' => now(),
+        ]);
+
+        // Enviar notificación y correo
+        if ($cliente->user) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($cliente->user->email)
+                    ->send(new \App\Mail\BriefAssigned($brief));
+            } catch (\Exception $e) {
+                Log::error('Error enviando correo de asignación: ' . $e->getMessage());
+            }
+
+            Notificacion::create([
+                'user_id' => $cliente->user->id,
+                'tipo' => 'alerta',
+                'titulo' => 'Nuevo Formulario Asignado',
+                'mensaje' => "Se te ha asignado: {$brief->titulo}. Por favor respóndelo pronto.",
+                'url' => $brief->form_url,
+                'leida' => false,
+            ]);
+        }
+
+        return back()->with('success', 'Brief asignado correctamente al cliente.');
+    }
+
+    /**
+     * Elimina la asignación de un cliente.
+     */
+    public function unassign(Brief $brief, $clienteId)
+    {
+        $brief->clientes()->detach($clienteId);
+        return back()->with('success', 'Asignación eliminada correctamente.');
     }
 }

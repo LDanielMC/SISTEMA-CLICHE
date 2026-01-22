@@ -169,6 +169,24 @@
 
                     @endif
 
+                    @if(Auth::user()->rol == 'cliente')
+                        <x-nav-link
+                            :href="route('cliente.dashboard')"
+                            :active="request()->routeIs('cliente.dashboard')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('cliente.dashboard') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Calendario') }}
+                        </x-nav-link>
+
+                        <x-nav-link
+                            :href="route('cliente.briefs')"
+                            :active="request()->routeIs('cliente.briefs')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('cliente.briefs') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Briefs y Encuestas') }}
+                        </x-nav-link>
+                    @endif
+
                     @if(auth()->user()->rol == 'empleado')
                         <x-nav-link
                             :href="route('asignaciones.misTareas')"

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Brief;
+use App\Models\Publicacion;
+use App\Models\Cliente;
 use App\Services\GoogleFormsService;
 use Illuminate\Support\Facades\Log;
 
@@ -25,16 +27,55 @@ class PortalClienteController extends Controller
             abort(403, 'No autorizado.');
         }
 
-        $cliente = $user->cliente; // Relación definida en User model
+        $cliente = $user->cliente; 
 
-        $briefsPendientes = [];
+        $eventosFormateados = [];
 
         if ($cliente) {
-            // Obtenemos los pendientes iniciales
-            $briefsCandidates = Brief::where('id_cliente', $cliente->id_cliente)
-                                     ->where('estado', 'pendiente')
-                                     ->orderBy('created_at', 'desc')
-                                     ->get();
+             $eventos = Publicacion::where('cliente_id', $cliente->id_cliente)
+                ->with(['plataforma', 'formato'])
+                ->get();
+
+            $eventosFormateados = $eventos->map(function ($evento) {
+                return [
+                    'id' => $evento->idPublicacion,
+                    'title' => ($evento->formato?->nombre ?? 'Publicación') . ($evento->plataforma ? ' (' . $evento->plataforma->nombre . ')' : ''),
+                    'start' => $evento->fecha->format('Y-m-d'),
+                    'color' => $this->getColorPorEstatus($evento->estatus),
+                    'extendedProps' => [
+                        'estatus' => $evento->estatus,
+                        'formato' => $evento->formato?->nombre ?? '',
+                        'plataforma' => $evento->plataforma?->nombre ?? '',
+                        'cliente_nombre' => ($evento->cliente?->empresa ?: $evento->cliente?->nombre) ?? 'Cliente',
+                        'copy' => $evento->copy,
+                        'arte' => $evento->arte,
+                    ]
+                ];
+            });
+        }
+
+        return view('portal_cliente.dashboard', compact('eventosFormateados'));
+    }
+
+    public function briefs()
+    {
+        $user = Auth::user();
+
+        if ($user->rol !== 'cliente') {
+            abort(403, 'No autorizado.');
+        }
+
+        $cliente = $user->cliente;
+
+        $briefsPendientes = [];
+        $briefsCompletados = [];
+
+        if ($cliente) {
+            // Obtenemos los pendientes iniciales desde la relación pivot
+            $briefsCandidates = $cliente->briefs()
+                                        ->wherePivot('estado', 'pendiente')
+                                        ->orderBy('brief_cliente.created_at', 'desc')
+                                        ->get();
             
             // Verificamos en tiempo real si ya fueron respondidos
             foreach ($briefsCandidates as $brief) {
@@ -47,12 +88,12 @@ class PortalClienteController extends Controller
                     if (!empty($responses)) {
                         foreach ($responses as $response) {
                             // Verificamos si la respuesta es posterior a la fecha de asignación actual
-                            // Google devuelve timestamp ISO 8601 / RFC3339
                             $submissionTime = \Carbon\Carbon::parse($response->getCreateTime());
                             
-                            // Si no hay fecha de envío, asumimos que todas cuentan (fallback), 
-                            // pero si hay, filtramos las viejas.
-                            if (!$brief->fecha_envio || $submissionTime->greaterThan($brief->fecha_envio)) {
+                            // Usamos la fecha_envio del pivot
+                            $fechaEnvio = $brief->pivot->fecha_envio ? \Carbon\Carbon::parse($brief->pivot->fecha_envio) : null;
+
+                            if (!$fechaEnvio || $submissionTime->greaterThan($fechaEnvio)) {
                                 $hasNewResponse = true;
                                 break;
                             }
@@ -60,33 +101,36 @@ class PortalClienteController extends Controller
                     }
 
                     if ($hasNewResponse) {
-                        // Si hay respuestas VÁLIDAS (nuevas), actualizamos estado y NO lo agregamos a pendientes
-                        $brief->update(['estado' => 'recibido']);
+                        // Actualizamos el estado en la tabla pivot
+                        $cliente->briefs()->updateExistingPivot($brief->id, ['estado' => 'recibido']);
                     } else {
-                        // Si no hay respuestas o son todas anteriores a la reasignación, lo mostramos como pendiente
                         $briefsPendientes[] = $brief;
                     }
                 } catch (\Exception $e) {
-                    // Si falla la API (ej. error de red), asumimos que sigue pendiente para no ocultarlo por error
                     Log::error("Error verificando brief {$brief->id} en dashboard: " . $e->getMessage());
                     $briefsPendientes[] = $brief;
                 }
             }
+
+            // Historial desde la relación pivot
+            $briefsCompletados = $cliente->briefs()
+                                         ->wherePivot('estado', 'recibido')
+                                         ->orderBy('brief_cliente.updated_at', 'desc')
+                                         ->get();
         }
 
-        // Convertir a colección para asegurar compatibilidad con métodos de vista (ej. ->count())
         $briefsPendientes = collect($briefsPendientes);
 
-        // Obtener historial de encuestas completadas (incluyendo las que se acaban de actualizar)
-        $briefsCompletados = [];
-        if ($cliente) {
-            $briefsCompletados = Brief::where('id_cliente', $cliente->id_cliente)
-                                      ->where('estado', 'recibido')
-                                      ->orderBy('updated_at', 'desc')
-                                      ->take(10)
-                                      ->get();
-        }
+        return view('portal_cliente.briefs', compact('briefsPendientes', 'briefsCompletados'));
+    }
 
-        return view('portal_cliente.dashboard', compact('briefsPendientes', 'briefsCompletados'));
+    private function getColorPorEstatus($estatus)
+    {
+        return match ($estatus) {
+            'Publicado' => '#28a745',
+            'Pendiente' => '#ffc107',
+            'Reprogramar' => '#dc3545',
+            default => '#6c757d',
+        };
     }
 }

@@ -160,6 +160,11 @@
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                         +{{ $mes['altas'] }}
                                                     </span>
+                                                    @if($mes['reactivaciones'] > 0)
+                                                        <div class="text-[10px] text-gray-500 mt-1">
+                                                            (N:{{ $mes['nuevos'] }} / R:{{ $mes['reactivaciones'] }})
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
@@ -279,6 +284,11 @@
                                 <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: 600; color: #1f2937;">{{ $mes['mes'] }}</td>
                                 <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">
                                     <span style="background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 10px; font-weight: 600; font-size: 11px;">+{{ $mes['altas'] }}</span>
+                                    @if($mes['reactivaciones'] > 0)
+                                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">
+                                            (N:{{ $mes['nuevos'] }} / R:{{ $mes['reactivaciones'] }})
+                                        </div>
+                                    @endif
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">
                                     <span style="background: #fecaca; color: #991b1b; padding: 3px 10px; border-radius: 10px; font-weight: 600; font-size: 11px;">-{{ $mes['bajas'] }}</span>

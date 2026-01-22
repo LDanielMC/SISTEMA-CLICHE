@@ -372,12 +372,12 @@ class ReporteController extends Controller
             return $sub->nivel_uso === 'bajo' && $sub->costo >= $costoAlto;
         })->count();
         
-        // 8. Gráfica principal: Gasto por Categoría (mensualizado)
-        $datosGrafica = $suscripciones->groupBy('categoria.nombre')->map(function ($grupo) {
+        // 8. Gráfica principal: Gasto por Servicio (mensualizado)
+        $datosGrafica = $suscripciones->groupBy('nombre_servicio')->map(function ($grupo) {
             return $grupo->sum(function ($sub) {
                 return $sub->periodicidad === 'mensual' ? $sub->costo : $sub->costo / 12;
             });
-        });
+        })->sortDesc()->take(10); // Top 10 servicios para no saturar la gráfica
         
         // 9. Análisis de eficiencia: Costo promedio por nivel de uso
         $costoPromedioUso = [
@@ -388,6 +388,8 @@ class ReporteController extends Controller
         
         // Exportación PDF
         if ($request->has('export') && $request->export === 'pdf') {
+            $chartImage = $request->input('chart_image');
+            
             $pdf = \PDF::loadView('admin.reportes.pdf_suscripciones', compact(
                 'suscripciones', 
                 'totalGastoMensual', 
@@ -400,7 +402,8 @@ class ReporteController extends Controller
                 'distribucionUso',
                 'distribucionEstado',
                 'aOptimizar',
-                'datosGrafica'
+                'datosGrafica',
+                'chartImage'
             ));
             return $pdf->download('reporte-suscripciones-' . date('Y-m-d') . '.pdf');
         }
@@ -447,7 +450,7 @@ class ReporteController extends Controller
         $datosClientes = $clientes->map(function ($cliente) {
             $acuerdos = $cliente->minutas->flatMap(fn($m) => $m->acuerdos);
             $totalAcuerdos = $acuerdos->count();
-            $concluidos = $acuerdos->where('estatus', 'concluido')->count();
+            $concluidos = $acuerdos->where('estatus', 'completado')->count();
             $pendientes = $acuerdos->where('estatus', 'pendiente')->count();
             $porcentajeConcluido = $totalAcuerdos > 0 ? round(($concluidos / $totalAcuerdos) * 100, 1) : 0;
 
@@ -503,16 +506,37 @@ class ReporteController extends Controller
     {
         $anio = $request->input('anio', date('Y'));
 
-        // Clientes al inicio del año
-        $clientesInicioAnio = \App\Models\Cliente::where(function($q) use ($anio) {
-            $q->where('fecha_registro', '<', "$anio-01-01")
-              ->where(function($q2) use ($anio) {
-                  $q2->whereNull('fecha_baja')
-                     ->orWhere('fecha_baja', '>=', "$anio-01-01");
-              });
-        })->count();
+        // --- 1. CLIENTES AL INICIO DEL AÑO ---
+        // Estimación base: Clientes registrados antes del año que no tienen fecha de baja 
+        // o cuya fecha de baja es posterior al inicio del año.
+        $clientesInicioAnio = \App\Models\Cliente::where('fecha_registro', '<', "$anio-01-01")
+            ->where(function($q) use ($anio) {
+                $q->whereNull('fecha_baja')
+                  ->orWhere('fecha_baja', '>=', "$anio-01-01");
+            })->count();
 
-        // Datos mensuales
+        // AJUSTE CON BITÁCORA:
+        // Si un cliente tiene como primer movimiento del año una "reactivación", 
+        // significa que al 1 de Enero estaba INACTIVO.
+        // Como la estimación base (fecha_baja NULL) lo cuenta como activo, debemos restarlo.
+        try {
+            $idsInactivosInicio = \App\Models\BitacoraCliente::select('id_cliente')
+                ->whereYear('fecha_movimiento', $anio)
+                ->groupBy('id_cliente')
+                ->havingRaw("MIN(fecha_movimiento) = MIN(CASE WHEN accion = 'reactivacion' THEN fecha_movimiento END)")
+                ->get()
+                ->count();
+                
+            $clientesInicioAnio -= $idsInactivosInicio;
+        } catch (\Exception $e) {
+            // Si falla por SQL mode o falta de datos, ignoramos el ajuste fino
+            \Log::warning('Error calculando ajuste de bitácora: ' . $e->getMessage());
+        }
+
+        // Asegurar que no sea negativo por inconsistencias de datos históricos
+        $clientesInicioAnio = max(0, $clientesInicioAnio);
+
+        // --- 2. CÁLCULO MENSUAL CON BITÁCORA ---
         $meses = [];
         $datosGrafica = [
             'labels' => [],
@@ -526,37 +550,59 @@ class ReporteController extends Controller
         $totalBajasAnio = 0;
 
         for ($mes = 1; $mes <= 12; $mes++) {
-            $nombreMes = \Carbon\Carbon::create($anio, $mes, 1)->locale('es')->monthName;
-            $nombreMesCorto = \Carbon\Carbon::create($anio, $mes, 1)->locale('es')->shortMonthName;
+            $fechaMes = \Carbon\Carbon::create($anio, $mes, 1);
+            $nombreMes = $fechaMes->locale('es')->monthName;
+            $nombreMesCorto = $fechaMes->locale('es')->shortMonthName;
             
-            // Altas en el mes
-            $altas = \App\Models\Cliente::whereYear('fecha_registro', $anio)
+            // A. Altas Reales = Nuevos Registros + Reactivaciones
+            $nuevos = \App\Models\Cliente::whereYear('fecha_registro', $anio)
                 ->whereMonth('fecha_registro', $mes)
                 ->count();
-
-            // Bajas en el mes
-            $bajas = \App\Models\Cliente::whereYear('fecha_baja', $anio)
-                ->whereMonth('fecha_baja', $mes)
+                
+            $reactivaciones = \App\Models\BitacoraCliente::where('accion', 'reactivacion')
+                ->whereYear('fecha_movimiento', $anio)
+                ->whereMonth('fecha_movimiento', $mes)
                 ->count();
+                
+            $altasMes = $nuevos + $reactivaciones;
 
-            $totalAcumulado = $totalAcumulado + $altas - $bajas;
-            $totalAltasAnio += $altas;
-            $totalBajasAnio += $bajas;
+            // B. Bajas Reales (Desde Bitácora)
+            // Si la bitácora está vacía (años anteriores), fallback a fecha_baja de tabla clientes
+            $bajasBitacora = \App\Models\BitacoraCliente::where('accion', 'baja')
+                ->whereYear('fecha_movimiento', $anio)
+                ->whereMonth('fecha_movimiento', $mes)
+                ->count();
+                
+            // Fallback para datos legacy si no hay registros en bitácora en todo el año
+            if ($bajasBitacora == 0 && $anio < 2026) {
+                 $bajasMes = \App\Models\Cliente::whereYear('fecha_baja', $anio)
+                    ->whereMonth('fecha_baja', $mes)
+                    ->count();
+            } else {
+                $bajasMes = $bajasBitacora;
+            }
+
+            // Cálculo saldo
+            $totalAcumulado = $totalAcumulado + $altasMes - $bajasMes;
+            $totalAltasAnio += $altasMes;
+            $totalBajasAnio += $bajasMes;
 
             $meses[] = [
                 'mes' => ucfirst($nombreMes),
-                'altas' => $altas,
-                'bajas' => $bajas,
+                'altas' => $altasMes,
+                'nuevos' => $nuevos,
+                'reactivaciones' => $reactivaciones,
+                'bajas' => $bajasMes,
                 'total' => $totalAcumulado
             ];
 
             $datosGrafica['labels'][] = ucfirst($nombreMesCorto);
-            $datosGrafica['altas'][] = $altas;
-            $datosGrafica['bajas'][] = $bajas;
+            $datosGrafica['altas'][] = $altasMes;
+            $datosGrafica['bajas'][] = $bajasMes;
             $datosGrafica['total'][] = $totalAcumulado;
         }
 
-        // Clientes al final del año
+        // Clientes al final del año (calculado)
         $clientesFinalAnio = $totalAcumulado;
 
         // Crecimiento neto y porcentaje
