@@ -15,22 +15,15 @@ class Brief extends Model
         'titulo',
         'descripcion',
         'form_url',
-        'id_cliente',
-        'estado',
-        'fecha_envio',
-        'fecha_ultimo_recordatorio',
-    ];
-
-    protected $casts = [
-        'fecha_envio' => 'datetime',
-        'fecha_ultimo_recordatorio' => 'datetime',
     ];
 
     /**
-     * Relación con el Cliente asignado.
+     * Relación con los Clientes asignados (Muchos a Muchos).
      */
-    public function cliente()
+    public function clientes()
     {
-        return $this->belongsTo(Cliente::class, 'id_cliente');
+        return $this->belongsToMany(Cliente::class, 'brief_cliente', 'brief_id', 'cliente_id')
+                    ->withPivot('estado', 'fecha_envio', 'fecha_ultimo_recordatorio')
+                    ->withTimestamps();
     }
 }

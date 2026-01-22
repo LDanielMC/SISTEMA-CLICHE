@@ -1,49 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-[#0149a8] leading-tight">
-            {{ __('Mi Portal') }}
+            {{ __('Mi Portal - Calendario') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            
-            <!-- SECCIÓN DE NOTIFICACIONES / PENDIENTES -->
-            @if(isset($briefsPendientes) && $briefsPendientes->count() > 0)
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow sm:rounded-md">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <!-- Icono Alerta -->
-                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3 w-full">
-                            <h3 class="text-sm leading-5 font-medium text-yellow-800">
-                                Tienes {{ $briefsPendientes->count() }} formulario(s) pendiente(s) de respuesta
-                            </h3>
-                            <div class="mt-4 grid gap-4">
-                                @foreach($briefsPendientes as $brief)
-                                    <div class="bg-white p-4 rounded-lg border border-yellow-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center">
-                                        <div>
-                                            <h4 class="font-bold text-gray-800">{{ $brief->titulo }}</h4>
-                                            <p class="text-sm text-gray-600 mt-1">{{ Str::limit($brief->descripcion, 100) }}</p>
-                                            <p class="text-xs text-gray-500 mt-2">
-                                                Enviado el: {{ $brief->fecha_envio ? $brief->fecha_envio->format('d/m/Y') : 'Fecha no disponible' }}
-                                            </p>
-                                        </div>
-                                        <div class="mt-4 md:mt-0">
-                                            <a href="{{ $brief->form_url }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150">
-                                                📝 Contestar Ahora
-                                            </a>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-t-4 border-[#0149a8]">
                 <div class="p-6 text-gray-900">
@@ -57,77 +20,17 @@
                     </h3>
                     <p class="text-gray-600 mb-6">Este es tu espacio exclusivo en Cliché Marketing Digital.</p>
                     
-                    <div class="mb-8">
-                        <h4 class="font-bold text-[#0149a8] text-lg mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                            Mis Encuestas
-                        </h4>
-                        
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            @if($briefsPendientes->isEmpty() && $briefsCompletados->isEmpty())
-                                <div class="p-6 text-center text-gray-500">
-                                    No tienes encuestas asignadas en este momento.
-                                </div>
-                            @else
-                                <div class="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                                    <!-- Pendientes -->
-                                    <div class="p-6">
-                                        <h5 class="text-sm font-bold text-gray-700 mb-4 flex items-center">
-                                            <span class="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
-                                            Pendientes ({{ $briefsPendientes->count() }})
-                                        </h5>
-                                        @if($briefsPendientes->count() > 0)
-                                            <div class="space-y-3">
-                                                @foreach($briefsPendientes as $brief)
-                                                    <div class="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-yellow-50/50 rounded-lg border border-yellow-100 hover:border-yellow-300 transition-colors">
-                                                        <div class="mb-2 sm:mb-0">
-                                                            <span class="block font-bold text-gray-800 text-sm">{{ $brief->titulo }}</span>
-                                                            <span class="text-xs text-gray-500">Asignada: {{ $brief->fecha_envio ? $brief->fecha_envio->format('d/m/Y') : 'N/A' }}</span>
-                                                        </div>
-                                                        <a href="{{ $brief->form_url }}" target="_blank" class="text-xs bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-1.5 px-3 rounded shadow-sm transition">
-                                                            Responder
-                                                        </a>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <p class="text-sm text-gray-400 italic">Todo al día.</p>
-                                        @endif
-                                    </div>
-
-                                    <!-- Completadas -->
-                                    <div class="p-6 bg-gray-50/50">
-                                        <h5 class="text-sm font-bold text-gray-700 mb-4 flex items-center">
-                                            <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                            Historial Reciente
-                                        </h5>
-                                        @if($briefsCompletados->count() > 0)
-                                            <div class="space-y-3">
-                                                @foreach($briefsCompletados as $brief)
-                                                    <div class="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-100 opacity-80 hover:opacity-100 transition">
-                                                        <div>
-                                                            <span class="block font-medium text-gray-600 text-sm line-through">{{ $brief->titulo }}</span>
-                                                            <span class="text-xs text-green-600 font-semibold flex items-center">
-                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                                                Completado
-                                                            </span>
-                                                        </div>
-                                                        <a href="{{ $brief->form_url }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="Ver formulario original">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                                        </a>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <p class="text-sm text-gray-400 italic">No hay historial reciente.</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
+                    <!-- Leyenda de Colores -->
+                    <div class="flex gap-4 mb-4 text-sm flex-wrap">
+                        <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-green-500 mr-2"></span> Publicado</div>
+                        <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-yellow-400 mr-2"></span> Pendiente</div>
+                        <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-red-500 mr-2"></span> Reprogramar</div>
                     </div>
-                    
-                    <div class="p-5 bg-[#f4f8fb] rounded-lg border border-[#e7eef6]">
+
+                    <!-- Contenedor del Calendario -->
+                    <div id='calendar' class="min-h-[600px]"></div>
+
+                    <div class="p-5 bg-[#f4f8fb] rounded-lg border border-[#e7eef6] mt-8">
                         <h4 class="font-bold text-[#0149a8] mb-2">Mis Proyectos</h4>
                         <p class="text-sm text-gray-600">Próximamente podrás ver aquí el estado de tus cotizaciones.</p>
                     </div>
@@ -135,4 +38,96 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Detalles de Publicación -->
+    <div id="eventModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Overlay de fondo -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modalTitle">Detalles de Publicación</h3>
+                            
+                            <div class="space-y-3 text-sm text-gray-700">
+                                <p><strong>Cliente:</strong> <span id="modalCliente"></span></p>
+                                <p><strong>Fecha:</strong> <span id="modalFecha"></span></p>
+                                <p><strong>Plataforma:</strong> <span id="modalPlataforma"></span></p>
+                                <p><strong>Formato:</strong> <span id="modalFormato"></span></p>
+                                <p><strong>Estatus:</strong> <span id="modalEstatus" class="font-semibold"></span></p>
+                                
+                                <div class="border-t pt-2 mt-2">
+                                    <p class="font-bold mb-1">Copy:</p>
+                                    <div id="modalCopy" class="whitespace-pre-wrap bg-gray-50 p-2 rounded border text-gray-600 max-h-40 overflow-y-auto"></div>
+                                </div>
+
+                                <div class="border-t pt-2 mt-2">
+                                    <p class="font-bold mb-1">Arte:</p>
+                                    <div id="modalArte" class="whitespace-pre-wrap bg-gray-50 p-2 rounded border text-gray-600 max-h-40 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onclick="closeModal()">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Scripts --}}
+    @push('scripts')
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var eventos = @json($eventosFormateados);
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                events: eventos,
+                eventClick: function(info) {
+                    // Llenar datos del modal
+                    var props = info.event.extendedProps;
+                    
+                    document.getElementById('modalCliente').textContent = props.cliente_nombre || 'N/A';
+                    
+                    // Formatear fecha
+                    var fecha = info.event.start;
+                    var opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    document.getElementById('modalFecha').textContent = fecha ? fecha.toLocaleDateString('es-ES', opcionesFecha) : 'N/A';
+
+                    document.getElementById('modalPlataforma').textContent = props.plataforma || 'N/A';
+                    document.getElementById('modalFormato').textContent = props.formato || 'N/A';
+                    document.getElementById('modalEstatus').textContent = props.estatus || 'N/A';
+                    document.getElementById('modalCopy').textContent = props.copy || 'Sin copy.';
+
+                    document.getElementById('modalArte').textContent = props.arte || 'Sin descripción de arte.';
+
+                    // Mostrar modal
+                    document.getElementById('eventModal').classList.remove('hidden');
+                }
+            });
+            calendar.render();
+
+            // Función para cerrar modal globalmente
+            window.closeModal = function() {
+                document.getElementById('eventModal').classList.add('hidden');
+            }
+        });
+    </script>
+    @endpush
 </x-app-layout>

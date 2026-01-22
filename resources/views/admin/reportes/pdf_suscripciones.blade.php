@@ -284,37 +284,45 @@
     </div>
     @endif
 
-    <!-- GRÁFICA 1: Gasto Mensual por Categoría -->
+    <!-- GRÁFICA 1: Gasto por Servicio (Pie Chart) -->
     <div class="charts-section">
-        <div class="chart-title">💰 Distribución de Gasto Mensual por Categoría</div>
-        @php
-            $totalGrafica = array_sum($datosGrafica->toArray());
-            $colores = ['bar-indigo', 'bar-green', 'bar-amber', 'bar-red', 'bar-purple', 'bar-pink', 'bar-blue', 'bar-teal'];
-            $colorIndex = 0;
-            $sortedGrafica = $datosGrafica->sortByDesc(function($value) { return $value; })->take(5);
-        @endphp
-        @foreach($sortedGrafica as $categoria => $monto)
-        @php 
-            $porcentaje = $totalGrafica > 0 ? ($monto / $totalGrafica) * 100 : 0;
-        @endphp
-        <div class="chart-bar">
-            <div style="display: table; width: 100%;">
-                <div style="display: table-cell; width: 35%; vertical-align: middle;">
-                    <span class="chart-bar-label">{{ $categoria }}</span>
-                </div>
-                <div style="display: table-cell; width: 50%; vertical-align: middle;">
-                    <div class="chart-bar-container" style="width: 100%;">
-                        <div class="chart-bar-fill {{ $colores[$colorIndex % count($colores)] }}" style="width: {{ $porcentaje }}%;"></div>
+        <div class="chart-title">💰 Distribución de Gasto Mensual por Servicio</div>
+        
+        @if(isset($chartImage) && $chartImage)
+            <div style="text-align: center; margin: 10px 0;">
+                <img src="{{ $chartImage }}" style="width: 100%; max-height: 350px; object-fit: contain;">
+            </div>
+        @else
+            <!-- Fallback textual si no hay imagen -->
+            @php
+                $totalGrafica = array_sum($datosGrafica->toArray());
+                $colores = ['bar-indigo', 'bar-green', 'bar-amber', 'bar-red', 'bar-purple', 'bar-pink', 'bar-blue', 'bar-teal'];
+                $colorIndex = 0;
+                $sortedGrafica = $datosGrafica->sortByDesc(function($value) { return $value; })->take(10);
+            @endphp
+            @foreach($sortedGrafica as $servicio => $monto)
+            @php 
+                $porcentaje = $totalGrafica > 0 ? ($monto / $totalGrafica) * 100 : 0;
+            @endphp
+            <div class="chart-bar">
+                <div style="display: table; width: 100%;">
+                    <div style="display: table-cell; width: 35%; vertical-align: middle;">
+                        <span class="chart-bar-label">{{ $servicio }}</span>
+                    </div>
+                    <div style="display: table-cell; width: 50%; vertical-align: middle;">
+                        <div class="chart-bar-container" style="width: 100%;">
+                            <div class="chart-bar-fill {{ $colores[$colorIndex % count($colores)] }}" style="width: {{ $porcentaje }}%;"></div>
+                        </div>
+                    </div>
+                    <div style="display: table-cell; width: 15%; vertical-align: middle; text-align: right; padding-left: 8px;">
+                        <span style="font-size: 9px; font-weight: bold; color: #374151;">${{ number_format($monto, 0) }}</span>
+                        <span style="font-size: 8px; color: #6b7280;"> ({{ number_format($porcentaje, 1) }}%)</span>
                     </div>
                 </div>
-                <div style="display: table-cell; width: 15%; vertical-align: middle; text-align: right; padding-left: 8px;">
-                    <span style="font-size: 9px; font-weight: bold; color: #374151;">${{ number_format($monto, 0) }}</span>
-                    <span style="font-size: 8px; color: #6b7280;"> ({{ number_format($porcentaje, 1) }}%)</span>
-                </div>
             </div>
-        </div>
-        @php $colorIndex++; @endphp
-        @endforeach
+            @php $colorIndex++; @endphp
+            @endforeach
+        @endif
     </div>
 
     <!-- GRÁFICA 2: Distribución por Nivel de Uso -->

@@ -85,4 +85,13 @@
             <strong>Notas:</strong> {{ $asignacion->notas_admin }}
         </div>
     @endif
+
+    {{-- Botón para evaluar individualmente --}}
+    <div class="mt-3 pt-3 border-t border-gray-200">
+        <a href="{{ route('asignaciones.evaluar', $asignacion) }}"
+           class="block text-center text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 py-2 rounded transition"
+           onclick="event.stopPropagation()">
+            📋 Evaluar tarea
+        </a>
+    </div>
 </div>

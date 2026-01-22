@@ -11,7 +11,8 @@
             <!-- Acciones -->
             <div class="flex justify-end items-center mb-6">
             
-            <form action="{{ route('reportes.suscripciones') }}" method="GET" class="flex gap-2">
+            <form id="formExportarPdf" action="{{ route('reportes.suscripciones.pdf') }}" method="POST" class="flex gap-2">
+                @csrf
                 <!-- Mantener filtros actuales al exportar -->
                 <input type="hidden" name="id_categoria" value="{{ request('id_categoria') }}">
                 <input type="hidden" name="periodicidad" value="{{ request('periodicidad') }}">
@@ -19,6 +20,7 @@
                 <input type="hidden" name="orden" value="{{ request('orden') }}">
                 <input type="hidden" name="direccion" value="{{ request('direccion') }}">
                 <input type="hidden" name="export" value="pdf">
+                <input type="hidden" name="chart_image" id="chartImageInput">
                 
                 <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +98,14 @@
                     </div>
                     <div class="text-3xl">💰</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Gráfica de Gasto por Servicio -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Top 10 Servicios con Mayor Gasto (Mensualizado)</h3>
+            <div class="relative h-96 w-full flex justify-center">
+                <canvas id="gastosChart"></canvas>
             </div>
         </div>
 
@@ -234,4 +244,69 @@
 
         </div>
     </div>
+
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('gastosChart').getContext('2d');
+            
+            const labels = @json($datosGrafica->keys());
+            const data = @json($datosGrafica->values());
+            
+            // Colores para la gráfica
+            const backgroundColors = [
+                '#4F46E5', '#EF4444', '#10B981', '#F59E0B', '#6366F1', 
+                '#EC4899', '#8B5CF6', '#14B8A6', '#F97316', '#06B6D4'
+            ];
+
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        onComplete: function() {
+                            // Opcional: Si se quisiera capturar automáticamente al cargar
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Capturar imagen al enviar formulario
+            document.getElementById('formExportarPdf').addEventListener('submit', function(e) {
+                // Convertir chart a imagen base64
+                const image = chart.toBase64Image();
+                document.getElementById('chartImageInput').value = image;
+            });
+        });
+    </script>
+    @endpush
 </x-app-layout>
