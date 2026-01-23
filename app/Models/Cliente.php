@@ -55,7 +55,7 @@ class Cliente extends Model
     public function briefs()
     {
         return $this->belongsToMany(Brief::class, 'brief_cliente', 'cliente_id', 'brief_id')
-                    ->withPivot('estado', 'fecha_envio', 'fecha_ultimo_recordatorio')
+                    ->withPivot('estado', 'fecha_envio', 'fecha_ultimo_recordatorio', 'google_response_id')
                     ->withTimestamps();
     }
 

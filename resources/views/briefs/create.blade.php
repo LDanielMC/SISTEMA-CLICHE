@@ -119,6 +119,7 @@
                                                         <option value="text">Texto Corto</option>
                                                         <option value="paragraph">Párrafo Largo</option>
                                                         <option value="choice">Opción Múltiple</option>
+                                                        <option value="email">Correo Electrónico (Validado)</option>
                                                     </select>
                                                 </div>
                                             </div>

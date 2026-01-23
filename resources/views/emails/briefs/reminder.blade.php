@@ -17,7 +17,7 @@
         </div>
         
         <div class="content">
-            <p>Hola <strong>{{ $brief->cliente->nombre }}</strong>,</p>
+            <p>Hola <strong>{{ $cliente->nombre }}</strong>,</p>
             
             <p>Notamos que aún no has completado el formulario (Brief) que te enviamos hace unos días.</p>
             <p>Tu respuesta es fundamental para que podamos avanzar con tu proyecto.</p>

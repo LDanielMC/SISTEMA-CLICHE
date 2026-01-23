@@ -82,20 +82,87 @@ class PortalClienteController extends Controller
                 try {
                     $responsesList = $this->googleFormsService->getFormResponses($brief->google_form_id);
                     $responses = $responsesList ? $responsesList->getResponses() : [];
+                    
+                    // Obtener emails de OTROS clientes asignados a este brief para evitar falsos positivos
+                    // (Si Cliente A responde, que no se le marque como completado a Cliente B solo por fecha)
+                    $otherClientsEmails = $brief->clientes()
+                        ->where('clientes.id_cliente', '!=', $cliente->id_cliente)
+                        ->with('user')
+                        ->get()
+                        ->pluck('user.email')
+                        ->filter()
+                        ->map(fn($e) => strtolower(trim($e)))
+                        ->toArray();
 
                     $hasNewResponse = false;
                     
                     if (!empty($responses)) {
                         foreach ($responses as $response) {
-                            // Verificamos si la respuesta es posterior a la fecha de asignación actual
+                            $responseId = $response->getResponseId();
                             $submissionTime = \Carbon\Carbon::parse($response->getCreateTime());
-                            
-                            // Usamos la fecha_envio del pivot
                             $fechaEnvio = $brief->pivot->fecha_envio ? \Carbon\Carbon::parse($brief->pivot->fecha_envio) : null;
+                            $linkedResponseId = $brief->pivot->google_response_id;
 
-                            if (!$fechaEnvio || $submissionTime->greaterThan($fechaEnvio)) {
+                            // 1. Si está vinculado manualmente a MI usuario, es match
+                            if ($linkedResponseId && $responseId === $linkedResponseId) {
                                 $hasNewResponse = true;
                                 break;
+                            }
+                            
+                            // Si está vinculado a OTRO response ID (que no es este), obviamente no es match de este response specific, 
+                            // pero el loop sigue. La lógica correcta es: si este response está vinculado a OTRO pivoting, ignore file.
+                            // Pero aquí 'linkedResponseId' es "el ID que mi pivot espera". Si tengo uno, solo ese vale.
+                            if ($linkedResponseId && $responseId !== $linkedResponseId) {
+                                continue;
+                            }
+
+                            // 2. Si NO tengo vinculación manual, buscamos coincidencia inteligente
+                            if (!$linkedResponseId) {
+                                $respondentEmail = strtolower(trim($response->getRespondentEmail()));
+                                
+                                // EXCLUSIÓN DE SEGURIDAD: 
+                                // Si el email de esta respuesta pertenece explícitamente a otro cliente asignado, IGNORARLA.
+                                if ($respondentEmail && in_array($respondentEmail, $otherClientsEmails)) {
+                                    continue;
+                                }
+
+                                // Busqueda en Body (con Exclusion también)
+                                $foundEmailInBody = false;
+                                $userEmail = $user->email;
+
+                                $answers = $response->getAnswers();
+                                if ($answers) {
+                                    foreach ($answers as $answer) {
+                                        $textAnswers = $answer->getTextAnswers();
+                                        if ($textAnswers && $textAnswers->getAnswers()) {
+                                            foreach ($textAnswers->getAnswers() as $textAnswer) {
+                                                $val = strtolower(trim($textAnswer->getValue()));
+                                                
+                                                // Check si es mio
+                                                if ($userEmail && $val === strtolower(trim($userEmail))) {
+                                                    $foundEmailInBody = true;
+                                                }
+                                                // Check si es de otro (Exclusión)
+                                                if (in_array($val, $otherClientsEmails)) {
+                                                    continue 3; // Salir de loops internos y pasar al siguiente RESPONSE
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // A. Coincidencia estricta por Email (Metadata o Cuerpo)
+                                if (($userEmail && $respondentEmail === strtolower(trim($userEmail))) || $foundEmailInBody) {
+                                    $hasNewResponse = true;
+                                    break;
+                                }
+
+                                // B. Coincidencia por Fecha (Fallback)
+                                // Solo si NO es de otro (ya filtrado arriba por email metadata)
+                                if (!$fechaEnvio || $submissionTime->greaterThan($fechaEnvio)) {
+                                    $hasNewResponse = true; 
+                                    break;
+                                }
                             }
                         }
                     }

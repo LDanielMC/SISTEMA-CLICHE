@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Brief;
+use App\Models\Cliente;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -15,13 +16,15 @@ class BriefAssigned extends Mailable
     use Queueable, SerializesModels;
 
     public $brief;
+    public $cliente;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Brief $brief)
+    public function __construct(Brief $brief, Cliente $cliente)
     {
         $this->brief = $brief;
+        $this->cliente = $cliente;
     }
 
     /**
