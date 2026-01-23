@@ -48,68 +48,26 @@
                 <div class="p-6 text-gray-900">
                     <h3 class="text-lg font-bold mb-4 border-b pb-2">Respuestas Recibidas ({{ is_countable($responses) ? count($responses) : 0 }})</h3>
 
-                    @if(empty($responses))
-                        <p class="text-gray-500 italic">No hay respuestas registradas aún en Google Forms.</p>
-                    @else
-                        <div class="space-y-6">
-                            @foreach($responses as $index => $response)
-                                <div class="border rounded-lg p-4 bg-gray-50">
-                                    <div class="flex justify-between items-center mb-3">
-                                        <h4 class="font-semibold text-gray-700">Respuesta #{{ $index + 1 }}</h4>
-                                        <span class="text-xs text-gray-500">
-                                            Fecha: {{ \Carbon\Carbon::parse($response->getCreateTime())->format('d/m/Y H:i') }}
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="space-y-3">
-                                        @php
-                                            $answers = $response->getAnswers();
-                                        @endphp
-                                        
-                                        @if($answers)
-                                            @foreach($answers as $questionId => $answer)
-                                                @php
-                                                    // Intentar encontrar el título de la pregunta usando el formDetails si está disponible
-                                                    $questionTitle = 'Pregunta ' . $questionId;
-                                                    if ($formDetails) {
-                                                        foreach ($formDetails->getItems() as $item) {
-                                                            $questionItem = $item->getQuestionItem();
-                                                            if ($questionItem && $questionItem->getQuestion()->getQuestionId() == $questionId) {
-                                                                $questionTitle = $item->getTitle();
-                                                                break;
-                                                            }
-                                                        }
-                                                    }
-                                                    
-                                                    // Obtener valor de la respuesta (texto)
-                                                    $textAnswers = $answer->getTextAnswers();
-                                                    $answerValue = 'Sin texto';
-                                                    
-                                                    if ($textAnswers && $textAnswers->getAnswers()) {
-                                                        $values = [];
-                                                        foreach ($textAnswers->getAnswers() as $textAnswer) {
-                                                            $values[] = $textAnswer->getValue();
-                                                        }
-                                                        $answerValue = implode(', ', $values);
-                                                    }
-                                                @endphp
-                                                <div class="ml-4">
-                                                    <p class="text-sm font-medium text-gray-800">{{ $questionTitle }}</p>
-                                                    <p class="text-sm text-gray-600 bg-white p-2 rounded border mt-1">{{ $answerValue }}</p>
-                                                </div>
-                                            @endforeach
-                                        @else
-                                            <p class="text-sm text-gray-500 italic ml-4">Respuestas vacías o formato no soportado.</p>
-                                        @endif
-                                    </div>
-                                    
-                                    <div class="mt-3 text-right">
-                                        <span class="text-xs text-gray-400">ID Respuesta: {{ $response->getResponseId() }}</span>
-                                    </div>
-                                </div>
-                            @endforeach
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    Para ver las respuestas identificadas por cliente, por favor diríjase a la sección de 
+                                    <a href="{{ route('briefs.assign', $brief->id) }}" class="font-bold underline hover:text-blue-900">Asignar Brief</a> 
+                                    y haga clic en "Ver Respuesta" junto al cliente correspondiente.
+                                </p>
+                            </div>
                         </div>
-                    @endif
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 italic">
+                        Nota: Aquí solo se muestra el conteo total. La visualización detallada se ha movido para evitar confusiones sobre la autoría de las respuestas.
+                    </p>
                 </div>
             </div>
 

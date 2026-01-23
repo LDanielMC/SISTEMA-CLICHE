@@ -222,7 +222,7 @@ class BriefController extends Controller
         if ($cliente->user) {
             try {
                 \Illuminate\Support\Facades\Mail::to($cliente->user->email)
-                    ->send(new \App\Mail\BriefAssigned($brief));
+                    ->send(new \App\Mail\BriefAssigned($brief, $cliente));
             } catch (\Exception $e) {
                 Log::error('Error enviando correo de asignación: ' . $e->getMessage());
             }
@@ -246,6 +246,152 @@ class BriefController extends Controller
     public function unassign(Brief $brief, $clienteId)
     {
         $brief->clientes()->detach($clienteId);
+
+        // Eliminar notificación asociada a este cliente y brief
+        $cliente = Cliente::find($clienteId);
+        if ($cliente && $cliente->user) {
+            Notificacion::where('user_id', $cliente->user->id)
+                        ->where('url', $brief->form_url)
+                        ->where('tipo', 'alerta')
+                        ->delete();
+        }
+
         return back()->with('success', 'Asignación eliminada correctamente.');
+    }
+
+    /**
+     * Muestra las respuestas de un cliente específico.
+     */
+    public function showClientResponse(Brief $brief, $clienteId)
+    {
+        $cliente = Cliente::with('user')->findOrFail($clienteId);
+
+        // Obtener datos del pivot 
+        $pivot = $brief->clientes()->where('cliente_id', $clienteId)->first()->pivot;
+        $fechaEnvio = $pivot->fecha_envio ? \Carbon\Carbon::parse($pivot->fecha_envio) : null;
+        $linkedResponseId = $pivot->google_response_id;
+
+        // Obtener emails de otros clientes asignados para excluir sus respuestas explícitas de "Posibles Coincidencias"
+        $otherEmails = $brief->clientes()
+            ->where('clientes.id_cliente', '!=', $clienteId)
+            ->with('user')
+            ->get()
+            ->pluck('user.email')
+            ->filter()
+            ->map(fn($e) => strtolower(trim($e)))
+            ->toArray();
+
+        $clientResponses = [];
+        $potentialMatches = [];
+        $formDetails = null;
+        $isLinked = false;
+
+        try {
+            // Obtener todas las respuestas
+            $responsesList = $this->googleFormsService->getFormResponses($brief->google_form_id);
+            $allResponses = $responsesList ? $responsesList->getResponses() : [];
+            
+            // Obtener detalles para títulos de preguntas
+            $formDetails = $this->googleFormsService->getFormDetails($brief->google_form_id);
+
+            // Filtrar por email del cliente
+            $clientEmail = $cliente->user ? $cliente->user->email : null;
+            
+            if ($allResponses) {
+                 foreach ($allResponses as $response) {
+                     $responseId = $response->getResponseId();
+                     
+                     // 0. Si YA está vinculado manualmente, mostramos SOLO ese
+                     if ($linkedResponseId && $responseId === $linkedResponseId) {
+                         $clientResponses[] = $response;
+                         $isLinked = true;
+                         // Limpiamos potentialMatches porque ya encontramos el definitivo
+                         $potentialMatches = [];
+                         break; 
+                     }
+
+                     // Si NO hay uno vinculado, buscamos candidatos
+                     if (!$linkedResponseId) {
+                         $respondentEmail = $response->getRespondentEmail();
+                         
+                         // Si el email pertenece a OTRO cliente asignado, lo ignoramos completamente aquí
+                         if ($respondentEmail && in_array(strtolower(trim($respondentEmail)), $otherEmails)) {
+                             continue;
+                         }
+
+                         // Búsqueda profunda de email en las respuestas del cuerpo (para auto-verificación y EXCLUSIÓN)
+                         $foundEmailInBody = false;
+                         $bodyEmail = null;
+                         $submissionTime = \Carbon\Carbon::parse($response->getCreateTime());
+
+                         $answers = $response->getAnswers();
+                         if ($answers) {
+                             foreach ($answers as $answer) {
+                                 $textAnswers = $answer->getTextAnswers();
+                                 if ($textAnswers && $textAnswers->getAnswers()) {
+                                     foreach ($textAnswers->getAnswers() as $textAnswer) {
+                                         $val = strtolower(trim($textAnswer->getValue()));
+                                         
+                                         // 1. Si encontramos el email del cliente ACTUAL, marcamos found
+                                         if ($clientEmail && $val === strtolower(trim($clientEmail))) {
+                                             $foundEmailInBody = true;
+                                         }
+
+                                         // 2. Si encontramos el email de OTRO cliente, excluimos esta respuesta (es de otro)
+                                         if (in_array($val, $otherEmails)) {
+                                             continue 3; // Salir de loops internos y pasar al siguiente RESPONSE
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+
+                         // 1. Coincidencia Exacta por Email (Metadata o Cuerpo)
+                         if (($clientEmail && strtolower(trim($respondentEmail)) === strtolower(trim($clientEmail))) || $foundEmailInBody) {
+                             $clientResponses[] = $response;
+                         }
+                         // 2. Coincidencia por Fecha (Si no hay email o no coincide, pero la fecha es válida para este cliente)
+                         elseif ($fechaEnvio && $submissionTime->greaterThan($fechaEnvio)) {
+                             $potentialMatches[] = $response;
+                         }
+                     }
+                 }
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error cargando respuestas de cliente: ' . $e->getMessage());
+            return back()->with('error', 'Error al conectar con Google Forms: ' . $e->getMessage());
+        }
+
+        return view('briefs.client_response', compact('brief', 'cliente', 'clientResponses', 'potentialMatches', 'formDetails', 'isLinked'));
+    }
+
+    /**
+     * Vincula manualmente una respuesta a un cliente.
+     */
+    public function linkResponse(Request $request, Brief $brief, $clienteId)
+    {
+        $request->validate([
+            'response_id' => 'required|string'
+        ]);
+
+        $brief->clientes()->updateExistingPivot($clienteId, [
+            'google_response_id' => $request->response_id,
+            'estado' => 'recibido' // Forzamos a recibido si lo vinculan
+        ]);
+
+        return back()->with('success', 'Respuesta vinculada correctamente al cliente.');
+    }
+
+    /**
+     * Desvincula una respuesta de un cliente.
+     */
+    public function unlinkResponse(Brief $brief, $clienteId)
+    {
+        $brief->clientes()->updateExistingPivot($clienteId, [
+            'google_response_id' => null
+        ]);
+
+        return back()->with('success', 'Vinculación eliminada. Ahora verás todas las posibles coincidencias.');
     }
 }

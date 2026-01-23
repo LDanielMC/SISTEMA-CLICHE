@@ -131,6 +131,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/briefs/{brief}/asignar', [\App\Http\Controllers\BriefController::class, 'assign'])->name('briefs.assign');
     Route::post('/briefs/{brief}/asignar', [\App\Http\Controllers\BriefController::class, 'storeAssignment'])->name('briefs.storeAssignment');
     Route::delete('/briefs/{brief}/asignar/{cliente}', [\App\Http\Controllers\BriefController::class, 'unassign'])->name('briefs.unassign');
+    Route::get('/briefs/{brief}/respuestas/{cliente}', [\App\Http\Controllers\BriefController::class, 'showClientResponse'])->name('briefs.client_response');
+    Route::post('/briefs/{brief}/respuestas/{cliente}/link', [\App\Http\Controllers\BriefController::class, 'linkResponse'])->name('briefs.link_response');
+    Route::delete('/briefs/{brief}/respuestas/{cliente}/unlink', [\App\Http\Controllers\BriefController::class, 'unlinkResponse'])->name('briefs.unlink_response');
 
     // RESPALDOS DE BASE DE DATOS
     Route::get('/admin/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');

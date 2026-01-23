@@ -13,40 +13,42 @@ class FixMissingNotifications extends Command
 
     public function handle()
     {
-        $this->info('Buscando briefs pendientes sin notificación...');
+        $this->info('Buscando briefs pendientes sin notificación (Relación Muchos a Muchos)...');
 
-        $briefs = Brief::where('estado', 'pendiente')
-                       ->whereNotNull('id_cliente')
-                       ->with('cliente.user')
-                       ->get();
+        // Obtener briefs con clientes asignados pendientes
+        $briefs = Brief::with(['clientes' => function ($q) {
+            $q->wherePivot('estado', 'pendiente');
+        }])->get();
 
         $count = 0;
 
         foreach ($briefs as $brief) {
-            if (!$brief->cliente || !$brief->cliente->user) {
-                continue;
-            }
+            foreach ($brief->clientes as $cliente) {
+                if (!$cliente->user) {
+                    continue;
+                }
 
-            $userId = $brief->cliente->user->id;
-            $tituloNotificacion = 'Nuevo Formulario Asignado';
-            
-            // Verificar si ya existe
-            $exists = Notificacion::where('user_id', $userId)
-                                  ->where('tipo', 'alerta')
-                                  ->where('mensaje', 'LIKE', "%{$brief->titulo}%")
-                                  ->exists();
+                $userId = $cliente->user->id;
+                $tituloNotificacion = 'Nuevo Formulario Asignado';
+                
+                // Verificar si ya existe
+                $exists = Notificacion::where('user_id', $userId)
+                                      ->where('tipo', 'alerta')
+                                      ->where('mensaje', 'LIKE', "%{$brief->titulo}%")
+                                      ->exists();
 
-            if (!$exists) {
-                Notificacion::create([
-                    'user_id' => $userId,
-                    'tipo' => 'alerta',
-                    'titulo' => $tituloNotificacion,
-                    'mensaje' => "Se te ha asignado: {$brief->titulo}. Por favor respóndelo pronto.",
-                    'url' => $brief->form_url,
-                    'leida' => false,
-                ]);
-                $this->info(" + Notificación creada para: {$brief->titulo} (Usuario ID: {$userId})");
-                $count++;
+                if (!$exists) {
+                    Notificacion::create([
+                        'user_id' => $userId,
+                        'tipo' => 'alerta',
+                        'titulo' => $tituloNotificacion,
+                        'mensaje' => "Se te ha asignado: {$brief->titulo}. Por favor respóndelo pronto.",
+                        'url' => $brief->form_url,
+                        'leida' => false,
+                    ]);
+                    $this->info(" + Notificación creada para: {$brief->titulo} (Usuario ID: {$userId})");
+                    $count++;
+                }
             }
         }
 
