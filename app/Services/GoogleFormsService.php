@@ -5,12 +5,14 @@ namespace App\Services;
 use Google\Client;
 use Google\Service\Forms;
 use Google\Service\Forms\Form;
+use Google\Service\Drive;
 use Illuminate\Support\Facades\Log;
 
 class GoogleFormsService
 {
     private $client;
     private $service;
+    private $driveService;
 
     public function __construct()
     {
@@ -55,6 +57,36 @@ class GoogleFormsService
             $this->service = new Forms($this->client);
         }
         return $this->service;
+    }
+
+    private function getDriveService()
+    {
+        if (!$this->driveService) {
+            $this->driveService = new Drive($this->client);
+        }
+        return $this->driveService;
+    }
+
+    public function deleteForm($formId)
+    {
+        Log::info("Intentando eliminar formulario de Google Drive. ID: {$formId}");
+        
+        if (!$this->isAuthenticated()) {
+            Log::error("No autenticado al intentar eliminar formulario.");
+            throw new \Exception('La aplicación no está autenticada con Google.');
+        }
+
+        try {
+            $drive = $this->getDriveService();
+            Log::info("Servicio Drive obtenido. Ejecutando delete...");
+            $drive->files->delete($formId);
+            Log::info("Formulario eliminado correctamente de Google Drive.");
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar formulario de Google Drive: ' . $e->getMessage());
+            // No lanzamos excepción para no interrumpir el flujo principal de eliminación en BD
+            return false;
+        }
     }
 
     public function getFormDetails($formId)
@@ -102,6 +134,12 @@ class GoogleFormsService
             $info->setTitle($titulo);
             $form->setInfo($info);
             
+            // INTENTAR OBLIGAR RECOLECCION DE EMAIL
+            // Nota: La API actual de Forms no siempre expone "collectEmail" directamente en Info object de create.
+            // Se hace via update no documentado o simplemente no se puede via API v1 en algunos scopes.
+            // Sin embargo, agregaremos un intento de setearlo si la librería lo soporta en futuras versiones, 
+            // pero lo más seguro es que dependemos de la pregunta explícita "email" que agregamos en UI.
+            
             $createdForm = $service->forms->create($form);
             $formId = $createdForm->getFormId();
 
@@ -140,6 +178,11 @@ class GoogleFormsService
                     if ($type === 'text') {
                         $textQuestion = new \Google\Service\Forms\TextQuestion();
                         $textQuestion->setParagraph(false); // False = Short answer
+                        $question->setTextQuestion($textQuestion);
+                    } elseif ($type === 'email') {
+                         // Tratamos email como texto corto
+                        $textQuestion = new \Google\Service\Forms\TextQuestion();
+                        $textQuestion->setParagraph(false);
                         $question->setTextQuestion($textQuestion);
                     } elseif ($type === 'paragraph') {
                         $textQuestion = new \Google\Service\Forms\TextQuestion();

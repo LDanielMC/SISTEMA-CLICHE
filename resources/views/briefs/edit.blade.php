@@ -40,36 +40,11 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="id_cliente" class="block text-gray-700 text-sm font-bold mb-2">
-                                Asignar a Cliente
-                            </label>
-                            <select name="id_cliente" id="id_cliente" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                <option value="">-- Sin asignar --</option>
-                                @foreach($clientes as $cliente)
-                                    <option value="{{ $cliente->id_cliente }}" 
-                                        {{ (old('id_cliente', $brief->id_cliente) == $cliente->id_cliente) ? 'selected' : '' }}>
-                                        {{ $cliente->empresa ? $cliente->empresa . ' (' . $cliente->nombre . ' ' . $cliente->apellido_paterno . ')' : $cliente->nombre . ' ' . $cliente->apellido_paterno }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Si cambias el cliente, el nuevo usuario podrá ver este formulario en su portal.</p>
-                        </div>
-
-                        <div class="mb-4">
                             <label for="descripcion" class="block text-gray-700 text-sm font-bold mb-2">
                                 Descripción
                             </label>
                             <textarea name="descripcion" id="descripcion" rows="4"
                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('descripcion', $brief->descripcion) }}</textarea>
-                        </div>
-
-                        <div class="mb-6">
-                            <label for="form_url" class="block text-gray-700 text-sm font-bold mb-2">
-                                URL del Formulario
-                            </label>
-                            <input type="url" name="form_url" id="form_url" 
-                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                   value="{{ old('form_url', $brief->form_url) }}">
                         </div>
 
                         <div class="mb-6 bg-gray-50 p-4 rounded text-sm text-gray-600">

@@ -274,6 +274,28 @@ class AsignacionTareaController extends Controller
         return view('asignaciones.tareas-empleado', compact('empleado', 'pendientes', 'completas', 'parcialmenteCompletas', 'incompletas'));
     }
 
+    /**
+     * Mostrar una tarea específica en vista Kanban para evaluación individual
+     */
+    public function evaluarTarea(AsignacionTarea $asignacion)
+    {
+        // Cargar relaciones necesarias
+        $asignacion->load(['tarea.cliente', 'tarea.categoria', 'empleado']);
+        $empleado = $asignacion->empleado;
+
+        // Crear una colección con solo esta asignación
+        $asignaciones = collect([$asignacion]);
+
+        // Clasificar la tarea única en su columna correspondiente
+        $pendientes = $asignaciones->whereIn('estado_admin', [null, 'pendiente']);
+        $completas = $asignaciones->where('estado_admin', 'completa');
+        $parcialmenteCompletas = $asignaciones->where('estado_admin', 'parcialmente_completa');
+        $incompletas = $asignaciones->where('estado_admin', 'incompleta');
+
+        // Reutilizar la vista Kanban existente
+        return view('asignaciones.tareas-empleado', compact('empleado', 'pendientes', 'completas', 'parcialmenteCompletas', 'incompletas'));
+    }
+
     public function actualizarEstadoAdmin(Request $request, AsignacionTarea $asignacion)
     {
         $validated = $request->validate([

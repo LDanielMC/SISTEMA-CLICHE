@@ -67,21 +67,6 @@
                                                placeholder="Ej: Brief de Diseño Web"
                                                value="{{ old('titulo') }}">
                                     </div>
-
-                                    <div class="mb-4">
-                                        <label for="id_cliente_create" class="block text-gray-700 text-sm font-bold mb-2">
-                                            Asignar a Cliente (Opcional)
-                                        </label>
-                                        <select name="id_cliente" id="id_cliente_create" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                            <option value="">-- Sin asignar por ahora --</option>
-                                            @foreach($clientes as $cliente)
-                                                <option value="{{ $cliente->id_cliente }}" {{ old('id_cliente') == $cliente->id_cliente ? 'selected' : '' }}>
-                                                    {{ $cliente->empresa ? $cliente->empresa . ' (' . $cliente->nombre . ' ' . $cliente->apellido_paterno . ')' : $cliente->nombre . ' ' . $cliente->apellido_paterno }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <p class="text-xs text-gray-500 mt-1">Si seleccionas un cliente, se le enviará un correo con el link inmediatamente.</p>
-                                    </div>
                                 </div>
 
                                 <div class="mb-4">
@@ -134,6 +119,7 @@
                                                         <option value="text">Texto Corto</option>
                                                         <option value="paragraph">Párrafo Largo</option>
                                                         <option value="choice">Opción Múltiple</option>
+                                                        <option value="email">Correo Electrónico (Validado)</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -187,20 +173,6 @@
                                 <p class="text-gray-600 text-xs italic mt-2">
                                     Pega el enlace completo de tu formulario de Google. El sistema extraerá automáticamente el ID.
                                 </p>
-                            </div>
-
-                            <div class="mb-6">
-                                <label for="id_cliente_link" class="block text-gray-700 text-sm font-bold mb-2">
-                                    Asignar a Cliente (Opcional)
-                                </label>
-                                <select name="id_cliente" id="id_cliente_link" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                    <option value="">-- Sin asignar por ahora --</option>
-                                    @foreach($clientes as $cliente)
-                                        <option value="{{ $cliente->id_cliente }}" {{ old('id_cliente') == $cliente->id_cliente ? 'selected' : '' }}>
-                                            {{ $cliente->empresa ? $cliente->empresa . ' (' . $cliente->nombre . ' ' . $cliente->apellido_paterno . ')' : $cliente->nombre . ' ' . $cliente->apellido_paterno }}
-                                        </option>
-                                    @endforeach
-                                </select>
                             </div>
 
                             <div class="flex items-center justify-end">

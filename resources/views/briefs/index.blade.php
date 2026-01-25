@@ -48,6 +48,9 @@
                                         <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                             ID Google
                                         </th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Asignaciones
+                                        </th>
                                         <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                             Acciones
                                         </th>
@@ -77,6 +80,11 @@
                                             </td>
                                             <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                                 <code class="bg-gray-100 px-2 py-1 rounded text-xs">{{ $brief->google_form_id }}</code>
+                                            </td>
+                                            <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                                <a href="{{ route('briefs.assign', $brief) }}" class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold hover:bg-purple-200 transition">
+                                                    👥 {{ $brief->clientes_count }} Asignados
+                                                </a>
                                             </td>
                                             <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
                                                 <div class="flex justify-center space-x-2">

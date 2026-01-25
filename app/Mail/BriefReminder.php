@@ -15,13 +15,15 @@ class BriefReminder extends Mailable
     use Queueable, SerializesModels;
 
     public $brief;
+    public $cliente;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Brief $brief)
+    public function __construct(Brief $brief, $cliente)
     {
         $this->brief = $brief;
+        $this->cliente = $cliente;
     }
 
     /**
