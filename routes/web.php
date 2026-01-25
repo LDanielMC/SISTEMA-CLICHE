@@ -41,6 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cliente/dashboard', [\App\Http\Controllers\PortalClienteController::class, 'dashboard'])
         ->name('cliente.dashboard');
 
+        Route::get('/cliente/briefs', [\App\Http\Controllers\PortalClienteController::class, 'briefs'])
+        ->name('cliente.briefs');
+
     });
 
 
@@ -90,6 +93,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/asignaciones/search-tareas', [AsignacionTareaController::class, 'searchTareas'])->name('asignaciones.searchTareas');
     Route::get('/asignaciones/search-empleados', [AsignacionTareaController::class, 'searchEmpleados'])->name('asignaciones.searchEmpleados');
     Route::get('/asignaciones/empleado/{empleado}', [AsignacionTareaController::class, 'tareasEmpleado'])->name('asignaciones.tareasEmpleado');
+    Route::get('/asignaciones/{asignacion}/evaluar', [AsignacionTareaController::class, 'evaluarTarea'])->name('asignaciones.evaluar');
     Route::post('/asignaciones/{asignacion}/actualizar-estado-admin', [AsignacionTareaController::class, 'actualizarEstadoAdmin'])->name('asignaciones.actualizarEstadoAdmin');
 
     // ✅ VER EVIDENCIA PDF (Admin también la puede ver)
@@ -123,6 +127,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // BRIEFS / FORMULARIOS
     Route::resource('briefs', \App\Http\Controllers\BriefController::class);
+    // Rutas para asignación de Briefs
+    Route::get('/briefs/{brief}/asignar', [\App\Http\Controllers\BriefController::class, 'assign'])->name('briefs.assign');
+    Route::post('/briefs/{brief}/asignar', [\App\Http\Controllers\BriefController::class, 'storeAssignment'])->name('briefs.storeAssignment');
+    Route::delete('/briefs/{brief}/asignar/{cliente}', [\App\Http\Controllers\BriefController::class, 'unassign'])->name('briefs.unassign');
+    Route::get('/briefs/{brief}/respuestas/{cliente}', [\App\Http\Controllers\BriefController::class, 'showClientResponse'])->name('briefs.client_response');
+    Route::post('/briefs/{brief}/respuestas/{cliente}/link', [\App\Http\Controllers\BriefController::class, 'linkResponse'])->name('briefs.link_response');
+    Route::delete('/briefs/{brief}/respuestas/{cliente}/unlink', [\App\Http\Controllers\BriefController::class, 'unlinkResponse'])->name('briefs.unlink_response');
 
     // RESPALDOS DE BASE DE DATOS
     Route::get('/admin/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
@@ -130,6 +141,15 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/backups/{filename}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
     Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\BackupController::class, 'delete'])->name('backups.delete');
     Route::post('/admin/backups/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('backups.restore');
+
+    // REPORTES
+    Route::get('/admin/reportes/cumplimiento', [\App\Http\Controllers\ReporteController::class, 'cumplimiento'])->name('reportes.cumplimiento');
+    Route::get('/admin/reportes/efectividad', [\App\Http\Controllers\ReporteController::class, 'efectividad'])->name('reportes.efectividad');
+    Route::get('/admin/reportes/carga-trabajo', [\App\Http\Controllers\ReporteController::class, 'cargaTrabajo'])->name('reportes.carga_trabajo');
+    Route::get('/admin/reportes/suscripciones', [\App\Http\Controllers\ReporteController::class, 'suscripciones'])->name('reportes.suscripciones');
+    Route::post('/admin/reportes/suscripciones/pdf', [\App\Http\Controllers\ReporteController::class, 'suscripciones'])->name('reportes.suscripciones.pdf');
+    Route::get('/admin/reportes/acuerdos-cliente', [\App\Http\Controllers\ReporteController::class, 'acuerdosCliente'])->name('reportes.acuerdos_cliente');
+    Route::get('/admin/reportes/crecimiento-clientes', [\App\Http\Controllers\ReporteController::class, 'crecimientoClientes'])->name('reportes.crecimiento_clientes');
 
     // CATEGORÍAS DE SUSCRIPCIÓN
     Route::resource('categorias-suscripcion', \App\Http\Controllers\CategoriaSuscripcionController::class)
@@ -148,8 +168,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->name('suscripciones.renovar.form');
     Route::post('suscripciones/{suscripcion}/renovar', [\App\Http\Controllers\SuscripcionController::class, 'renovar'])
         ->name('suscripciones.renovar');
-
-
 });
 
 

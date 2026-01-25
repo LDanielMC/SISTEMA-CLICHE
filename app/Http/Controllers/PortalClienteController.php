@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Brief;
+use App\Models\Publicacion;
+use App\Models\Cliente;
 use App\Services\GoogleFormsService;
 use Illuminate\Support\Facades\Log;
 
@@ -25,68 +27,177 @@ class PortalClienteController extends Controller
             abort(403, 'No autorizado.');
         }
 
-        $cliente = $user->cliente; // Relación definida en User model
+        $cliente = $user->cliente; 
 
-        $briefsPendientes = [];
+        $eventosFormateados = [];
 
         if ($cliente) {
-            // Obtenemos los pendientes iniciales
-            $briefsCandidates = Brief::where('id_cliente', $cliente->id_cliente)
-                                     ->where('estado', 'pendiente')
-                                     ->orderBy('created_at', 'desc')
-                                     ->get();
+             $eventos = Publicacion::where('cliente_id', $cliente->id_cliente)
+                ->with(['plataforma', 'formato'])
+                ->get();
+
+            $eventosFormateados = $eventos->map(function ($evento) {
+                return [
+                    'id' => $evento->idPublicacion,
+                    'title' => ($evento->formato?->nombre ?? 'Publicación') . ($evento->plataforma ? ' (' . $evento->plataforma->nombre . ')' : ''),
+                    'start' => $evento->fecha->format('Y-m-d'),
+                    'color' => $this->getColorPorEstatus($evento->estatus),
+                    'extendedProps' => [
+                        'estatus' => $evento->estatus,
+                        'formato' => $evento->formato?->nombre ?? '',
+                        'plataforma' => $evento->plataforma?->nombre ?? '',
+                        'cliente_nombre' => ($evento->cliente?->empresa ?: $evento->cliente?->nombre) ?? 'Cliente',
+                        'copy' => $evento->copy,
+                        'arte' => $evento->arte,
+                    ]
+                ];
+            });
+        }
+
+        return view('portal_cliente.dashboard', compact('eventosFormateados'));
+    }
+
+    public function briefs()
+    {
+        $user = Auth::user();
+
+        if ($user->rol !== 'cliente') {
+            abort(403, 'No autorizado.');
+        }
+
+        $cliente = $user->cliente;
+
+        $briefsPendientes = [];
+        $briefsCompletados = [];
+
+        if ($cliente) {
+            // Obtenemos los pendientes iniciales desde la relación pivot
+            $briefsCandidates = $cliente->briefs()
+                                        ->wherePivot('estado', 'pendiente')
+                                        ->orderBy('brief_cliente.created_at', 'desc')
+                                        ->get();
             
             // Verificamos en tiempo real si ya fueron respondidos
             foreach ($briefsCandidates as $brief) {
                 try {
                     $responsesList = $this->googleFormsService->getFormResponses($brief->google_form_id);
                     $responses = $responsesList ? $responsesList->getResponses() : [];
+                    
+                    // Obtener emails de OTROS clientes asignados a este brief para evitar falsos positivos
+                    // (Si Cliente A responde, que no se le marque como completado a Cliente B solo por fecha)
+                    $otherClientsEmails = $brief->clientes()
+                        ->where('clientes.id_cliente', '!=', $cliente->id_cliente)
+                        ->with('user')
+                        ->get()
+                        ->pluck('user.email')
+                        ->filter()
+                        ->map(fn($e) => strtolower(trim($e)))
+                        ->toArray();
 
                     $hasNewResponse = false;
                     
                     if (!empty($responses)) {
                         foreach ($responses as $response) {
-                            // Verificamos si la respuesta es posterior a la fecha de asignación actual
-                            // Google devuelve timestamp ISO 8601 / RFC3339
+                            $responseId = $response->getResponseId();
                             $submissionTime = \Carbon\Carbon::parse($response->getCreateTime());
-                            
-                            // Si no hay fecha de envío, asumimos que todas cuentan (fallback), 
-                            // pero si hay, filtramos las viejas.
-                            if (!$brief->fecha_envio || $submissionTime->greaterThan($brief->fecha_envio)) {
+                            $fechaEnvio = $brief->pivot->fecha_envio ? \Carbon\Carbon::parse($brief->pivot->fecha_envio) : null;
+                            $linkedResponseId = $brief->pivot->google_response_id;
+
+                            // 1. Si está vinculado manualmente a MI usuario, es match
+                            if ($linkedResponseId && $responseId === $linkedResponseId) {
                                 $hasNewResponse = true;
                                 break;
+                            }
+                            
+                            // Si está vinculado a OTRO response ID (que no es este), obviamente no es match de este response specific, 
+                            // pero el loop sigue. La lógica correcta es: si este response está vinculado a OTRO pivoting, ignore file.
+                            // Pero aquí 'linkedResponseId' es "el ID que mi pivot espera". Si tengo uno, solo ese vale.
+                            if ($linkedResponseId && $responseId !== $linkedResponseId) {
+                                continue;
+                            }
+
+                            // 2. Si NO tengo vinculación manual, buscamos coincidencia inteligente
+                            if (!$linkedResponseId) {
+                                $respondentEmail = strtolower(trim($response->getRespondentEmail()));
+                                
+                                // EXCLUSIÓN DE SEGURIDAD: 
+                                // Si el email de esta respuesta pertenece explícitamente a otro cliente asignado, IGNORARLA.
+                                if ($respondentEmail && in_array($respondentEmail, $otherClientsEmails)) {
+                                    continue;
+                                }
+
+                                // Busqueda en Body (con Exclusion también)
+                                $foundEmailInBody = false;
+                                $userEmail = $user->email;
+
+                                $answers = $response->getAnswers();
+                                if ($answers) {
+                                    foreach ($answers as $answer) {
+                                        $textAnswers = $answer->getTextAnswers();
+                                        if ($textAnswers && $textAnswers->getAnswers()) {
+                                            foreach ($textAnswers->getAnswers() as $textAnswer) {
+                                                $val = strtolower(trim($textAnswer->getValue()));
+                                                
+                                                // Check si es mio
+                                                if ($userEmail && $val === strtolower(trim($userEmail))) {
+                                                    $foundEmailInBody = true;
+                                                }
+                                                // Check si es de otro (Exclusión)
+                                                if (in_array($val, $otherClientsEmails)) {
+                                                    continue 3; // Salir de loops internos y pasar al siguiente RESPONSE
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // A. Coincidencia estricta por Email (Metadata o Cuerpo)
+                                if (($userEmail && $respondentEmail === strtolower(trim($userEmail))) || $foundEmailInBody) {
+                                    $hasNewResponse = true;
+                                    break;
+                                }
+
+                                // B. Coincidencia por Fecha (Fallback)
+                                // Solo si NO es de otro (ya filtrado arriba por email metadata)
+                                if (!$fechaEnvio || $submissionTime->greaterThan($fechaEnvio)) {
+                                    $hasNewResponse = true; 
+                                    break;
+                                }
                             }
                         }
                     }
 
                     if ($hasNewResponse) {
-                        // Si hay respuestas VÁLIDAS (nuevas), actualizamos estado y NO lo agregamos a pendientes
-                        $brief->update(['estado' => 'recibido']);
+                        // Actualizamos el estado en la tabla pivot
+                        $cliente->briefs()->updateExistingPivot($brief->id, ['estado' => 'recibido']);
                     } else {
-                        // Si no hay respuestas o son todas anteriores a la reasignación, lo mostramos como pendiente
                         $briefsPendientes[] = $brief;
                     }
                 } catch (\Exception $e) {
-                    // Si falla la API (ej. error de red), asumimos que sigue pendiente para no ocultarlo por error
                     Log::error("Error verificando brief {$brief->id} en dashboard: " . $e->getMessage());
                     $briefsPendientes[] = $brief;
                 }
             }
+
+            // Historial desde la relación pivot
+            $briefsCompletados = $cliente->briefs()
+                                         ->wherePivot('estado', 'recibido')
+                                         ->orderBy('brief_cliente.updated_at', 'desc')
+                                         ->get();
         }
 
-        // Convertir a colección para asegurar compatibilidad con métodos de vista (ej. ->count())
         $briefsPendientes = collect($briefsPendientes);
 
-        // Obtener historial de encuestas completadas (incluyendo las que se acaban de actualizar)
-        $briefsCompletados = [];
-        if ($cliente) {
-            $briefsCompletados = Brief::where('id_cliente', $cliente->id_cliente)
-                                      ->where('estado', 'recibido')
-                                      ->orderBy('updated_at', 'desc')
-                                      ->take(10)
-                                      ->get();
-        }
+        return view('portal_cliente.briefs', compact('briefsPendientes', 'briefsCompletados'));
+    }
 
-        return view('portal_cliente.dashboard', compact('briefsPendientes', 'briefsCompletados'));
+    private function getColorPorEstatus($estatus)
+    {
+        return match ($estatus) {
+            'Publicado' => '#28a745',
+            'Pendiente' => '#ffc107',
+            'Reprogramar' => '#dc3545',
+            default => '#6c757d',
+        };
     }
 }

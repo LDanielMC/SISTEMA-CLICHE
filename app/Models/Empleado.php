@@ -30,6 +30,14 @@ class Empleado extends Model
         return $this->belongsTo(User::class, 'id_usuario');
     }
 
+    /**
+     * Relación con las tareas asignadas
+     */
+    public function asignaciones()
+    {
+        return $this->hasMany(AsignacionTarea::class, 'empleado_id', 'id_empleado');
+    }
+
     protected $casts = [
         'fecha_ingreso' => 'datetime', // Esto convierte la fecha en un objeto Carbon
         'fecha_baja' => 'date',

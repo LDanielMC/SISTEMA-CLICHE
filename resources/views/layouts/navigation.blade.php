@@ -130,6 +130,61 @@
                             💾 {{ __('Respaldos') }}
                         </x-nav-link>
 
+                        {{-- Dropdown de Reportes --}}
+                        <div class="relative sm:flex sm:items-center">
+                            <x-dropdown align="left" width="48">
+                                <x-slot name="trigger">
+                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ request()->routeIs('reportes.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                                        <div>📈 {{ __('Reportes') }}</div>
+                                        <div class="ms-1">
+                                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    </button>
+                                </x-slot>
+
+                                <x-slot name="content">
+                                    <x-dropdown-link :href="route('reportes.cumplimiento')">
+                                        {{ __('Cumplimiento y Puntualidad') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.efectividad')">
+                                        {{ __('Efectividad Cotizaciones') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.carga_trabajo')">
+                                        {{ __('Carga de Trabajo') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.suscripciones')">
+                                        {{ __('Suscripciones y Costos') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.acuerdos_cliente')">
+                                        {{ __('Acuerdos por Cliente') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('reportes.crecimiento_clientes')">
+                                        {{ __('Crecimiento de Clientes') }}
+                                    </x-dropdown-link>
+                                </x-slot>
+                            </x-dropdown>
+                        </div>
+
+                    @endif
+
+                    @if(Auth::user()->rol == 'cliente')
+                        <x-nav-link
+                            :href="route('cliente.dashboard')"
+                            :active="request()->routeIs('cliente.dashboard')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('cliente.dashboard') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Calendario') }}
+                        </x-nav-link>
+
+                        <x-nav-link
+                            :href="route('cliente.briefs')"
+                            :active="request()->routeIs('cliente.briefs')"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
+                                   {{ request()->routeIs('cliente.briefs') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                            {{ __('Briefs y Encuestas') }}
+                        </x-nav-link>
                     @endif
 
                     @if(auth()->user()->rol == 'empleado')
