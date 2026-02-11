@@ -24,7 +24,6 @@
             
             <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
                 <h3 style="margin-top: 0;">{{ $brief->titulo }}</h3>
-                <p>Enviado el: {{ $brief->fecha_envio->format('d/m/Y') }}</p>
             </div>
 
             <p>Por favor, complétalo lo antes posible:</p>

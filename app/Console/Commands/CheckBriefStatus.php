@@ -33,10 +33,11 @@ class CheckBriefStatus extends Command
         $this->info('Iniciando verificación de estados de Briefs (Relación Muchos a Muchos)...');
 
         // Obtener briefs que tengan al menos un cliente asignado con estado 'pendiente'
+        // Cargamos TODOS los clientes para poder contar correctamente en el fallback por fecha
         $briefs = Brief::whereHas('clientes', function ($q) {
             $q->where('brief_cliente.estado', 'pendiente');
         })->with(['clientes' => function ($q) {
-            $q->wherePivot('estado', 'pendiente')->withPivot('fecha_envio', 'fecha_ultimo_recordatorio');
+            $q->withPivot('estado', 'fecha_envio', 'fecha_ultimo_recordatorio', 'google_response_id');
         }])->get();
 
         $count = 0;
@@ -55,26 +56,8 @@ class CheckBriefStatus extends Command
                 $responses = [];
             }
 
-            // Obtener emails de otros clientes de este mismo brief para exclusión
-            $otherClientsEmails = $brief->clientes
-                ->where('id_cliente', '!=', $cliente->id_cliente)
-                ->pluck('user.email')
-                ->filter()
-                ->map(fn($e) => strtolower(trim($e)))
-                ->toArray();
-
             // 2. Iterar sobre cada cliente asignado pendiente
-            // --- MOVIDO: Iterar sobre clientes PRIMERO para definir contexto ---
-            // El loop original iteraba $brief->clientes para check.
-            // Necesitamos asegurarnos que la variable $otherClientsEmails se calcule correctamente RELATIVO al cliente actual del loop.
-            // ERROR EN MI LOGICA ANTERIOR: $otherClientsEmails debe recalcularse DENTRO del loop de clientes, porque "otros" cambia para cada cliente.
-            
-                 // (Revertimos cambios arriba y aplicamos dentro del loop)
-             
-            // ... (rest of logic inside loop)
-            
-            // 2. Iterar sobre cada cliente asignado pendiente
-            foreach ($brief->clientes as $cliente) {
+            foreach ($brief->clientes->where('pivot.estado', 'pendiente') as $cliente) {
                 $pivot = $cliente->pivot;
                 $completed = false;
                 
@@ -104,7 +87,13 @@ class CheckBriefStatus extends Command
                             continue;
                         }
 
-                        // 2. Exclusión Inteligente
+                        // 2. Verificar que la respuesta sea POSTERIOR a la fecha de envío
+                        // Esto permite solicitar nuevas respuestas y que solo cuenten las nuevas
+                        if ($fechaEnvio && $submissionTime->lessThanOrEqualTo($fechaEnvio)) {
+                            continue; // Respuesta anterior al envío, no cuenta
+                        }
+
+                        // 3. Exclusión Inteligente
                         $respondentEmail = strtolower(trim($response->getRespondentEmail()));
                         
                         // Si el email es de OTRO cliente asignado, lo saltamos
@@ -139,22 +128,20 @@ class CheckBriefStatus extends Command
                             
                             if (($respondentEmail === $targetEmail) || $foundEmailInBody) {
                                 $completed = true;
+                                // Auto-vincular la respuesta detectada
+                                $brief->clientes()->updateExistingPivot($cliente->id_cliente, [
+                                    'google_response_id' => $responseId,
+                                    'estado' => 'recibido'
+                                ]);
+                                $this->info("✅ Respuesta detectada y vinculada para {$cliente->nombre} en '{$brief->titulo}'");
                                 break;
                             }
                         }
 
-                        // 4. Fecha (Fallback)
-                        // Solo si no fue excluido por ser de otro cliente
-                        if (!$completed && (!$fechaEnvio || $submissionTime->greaterThan($fechaEnvio))) {
-                            // IMPORTANTE: Aquí está el riesgo de falsos positivos por fecha.
-                            // Si llegó hasta aquí, significa que:
-                            // a) No está vinculado manualmente
-                            // b) No tiene email de otro cliente (metadata o body)
-                            // c) Coincide por fecha
-                            // Asumimos que es una respuesta anónima válida para este cliente.
-                            $completed = true;
-                            break; 
-                        }
+                        // 4. Fecha (Fallback) - DESHABILITADO
+                        // El fallback por fecha causaba falsos positivos al vincular respuestas antiguas
+                        // Ahora solo se vincula si hay coincidencia por email (metadata o cuerpo)
+                        // Si el cliente respondió sin email identificable, debe vincularse manualmente
                     }
                 }
 

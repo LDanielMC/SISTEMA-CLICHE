@@ -51,7 +51,7 @@ class ClienteController extends Controller
 
     public function store(Request $request)
     {
-        // 1. VALIDACIÓN INTEGRADA (Cliente + Fiscal)
+        // 1. VALIDACIÓN INTEGRADA (Cliente + Fiscales múltiples)
         $request->validate([
             // Datos Cliente
             'empresa'           => 'nullable|string|max:180',
@@ -60,16 +60,25 @@ class ClienteController extends Controller
             'apellido_materno'  => 'nullable|string|max:120',
             'giro_sector'       => 'required|string|max:150',
             'correo'            => 'required|email|max:255|unique:users,email',
-            'telefono'          => 'required|string|max:30',
-            'fecha_registro'    => 'required|date', // Asegúrate de enviar esto desde el form
+            'telefono'          => 'required|regex:/^[0-9]{10}$/',
+            'fecha_registro'    => 'required|date',
 
-            // Datos Fiscales (Validación condicional)
-            'fiscal.rfc'             => 'nullable|required_with:fiscal.razon_social|max:20',
-            'fiscal.razon_social'    => 'nullable|required_with:fiscal.rfc|max:255',
-            'fiscal.regimen'         => 'nullable|max:120',
-            'fiscal.telefono_fiscal' => 'nullable|max:30',
-            'fiscal.correo_fiscal'   => 'nullable|email|max:255',
-            'fiscal.direccion_fiscal'=> 'nullable|max:400',
+            // Validación de múltiples info fiscales
+            'fiscales'                      => 'nullable|array',
+            'fiscales.*.rfc'                => 'required_with:fiscales.*.razon_social|max:20|distinct',
+            'fiscales.*.razon_social'       => 'required_with:fiscales.*.rfc|max:255',
+            'fiscales.*.regimen'            => 'nullable|max:120',
+            'fiscales.*.telefono_fiscal'    => 'nullable|regex:/^[0-9]{10}$/',
+            'fiscales.*.correo_fiscal'      => 'nullable|email|max:255|distinct',
+            'fiscales.*.direccion_fiscal'   => 'nullable|max:400',
+        ], [
+            'correo.unique' => 'Ya existe un usuario registrado con este correo electrónico.',
+            'telefono.regex' => 'El teléfono debe contener exactamente 10 dígitos numéricos.',
+            'fiscales.*.rfc.required_with' => 'El RFC es obligatorio cuando se ingresa Razón Social.',
+            'fiscales.*.rfc.distinct' => 'El RFC debe ser único en el formulario.',
+            'fiscales.*.razon_social.required_with' => 'La Razón Social es obligatoria cuando se ingresa RFC.',
+            'fiscales.*.telefono_fiscal.regex' => 'El teléfono fiscal debe contener exactamente 10 dígitos numéricos.',
+            'fiscales.*.correo_fiscal.distinct' => 'El correo fiscal debe ser único en el formulario.',
         ]);
 
         // USAMOS UNA TRANSACCIÓN PARA QUE TODO SE GUARDE O NADA SE GUARDE
@@ -96,13 +105,31 @@ class ClienteController extends Controller
                 'id_usuario'        => $user->id,
             ]);
 
-            // 4) Guardar Info Fiscal (Solo si se llenó el RFC)
-            if ($request->filled('fiscal.rfc')) {
-                // Creamos la info fiscal vinculada a este cliente
-                $cliente->infoFiscal()->create($request->input('fiscal'));
+            // 4) Guardar Info Fiscales (Múltiples)
+            $fiscalesEnviados = $request->input('fiscales', []);
+            foreach ($fiscalesEnviados as $fiscalData) {
+                // Solo guardar si tiene RFC
+                if (!empty($fiscalData['rfc'])) {
+                    $cliente->infosFiscales()->create([
+                        'rfc'              => $fiscalData['rfc'],
+                        'razon_social'     => $fiscalData['razon_social'] ?? null,
+                        'regimen'          => $fiscalData['regimen'] ?? null,
+                        'correo_fiscal'    => $fiscalData['correo_fiscal'] ?? null,
+                        'telefono_fiscal'  => $fiscalData['telefono_fiscal'] ?? null,
+                        'direccion_fiscal' => $fiscalData['direccion_fiscal'] ?? null,
+                    ]);
+                }
             }
 
-            // 5) Enviar correo de invitación
+            // 5) GUARDAR EN BITÁCORA - Registro de alta
+            BitacoraCliente::create([
+                'id_cliente' => $cliente->id_cliente,
+                'accion' => 'alta',
+                'id_usuario_responsable' => Auth::id(),
+                'fecha_movimiento' => now(),
+            ]);
+
+            // 6) Enviar correo de invitación
             Password::sendResetLink(['email' => $user->email]);
         });
 
@@ -124,27 +151,35 @@ class ClienteController extends Controller
         // Obtenemos el ID del usuario para la validación (ignorar su propio correo actual)
         $userId = $cliente->user->id;
 
-        // 1) Validar los datos (Cliente + Fiscal)
+        // 1) Validar los datos (Cliente + Fiscales múltiples)
         $request->validate([
             'empresa'           => 'nullable|string|max:180',
             'nombre'            => 'required|string|max:120',
             'apellido_paterno'  => 'required|string|max:120',
             'apellido_materno'  => 'nullable|string|max:120',
             'giro_sector'       => 'required|string|max:150',
-            'telefono'          => 'required|string|max:30',
+            'telefono'          => 'required|regex:/^[0-9]{10}$/',
             
             // "unique:users,email,ID" le dice a Laravel: "Revisa que sea único, pero sáltate este ID"
             'correo'            => 'required|email|max:255|unique:users,email,'.$userId,
 
-            // Validación fiscal en edición
-            'fiscal.rfc'             => 'nullable|required_with:fiscal.razon_social|max:20',
-            'fiscal.razon_social'    => 'nullable|required_with:fiscal.rfc|max:255',
-            'fiscal.regimen'         => 'nullable|max:120',
-            'fiscal.telefono_fiscal' => 'nullable|max:30',
-            'fiscal.correo_fiscal'   => 'nullable|email|max:255',
-            'fiscal.direccion_fiscal'=> 'nullable|max:400',
+            // Validación de múltiples info fiscales
+            'fiscales'                      => 'nullable|array',
+            'fiscales.*.id'                 => 'nullable|integer',
+            'fiscales.*.rfc'                => 'required_with:fiscales.*.razon_social|max:20|distinct',
+            'fiscales.*.razon_social'       => 'required_with:fiscales.*.rfc|max:255',
+            'fiscales.*.regimen'            => 'nullable|max:120',
+            'fiscales.*.telefono_fiscal'    => 'nullable|regex:/^[0-9]{10}$/',
+            'fiscales.*.correo_fiscal'      => 'nullable|email|max:255|distinct',
+            'fiscales.*.direccion_fiscal'   => 'nullable|max:400',
         ], [
             'correo.unique' => 'El correo electrónico ya está registrado en el sistema.',
+            'telefono.regex' => 'El teléfono debe contener exactamente 10 dígitos numéricos.',
+            'fiscales.*.rfc.required_with' => 'El RFC es obligatorio cuando se ingresa Razón Social.',
+            'fiscales.*.rfc.distinct' => 'El RFC debe ser único en el formulario.',
+            'fiscales.*.razon_social.required_with' => 'La Razón Social es obligatoria cuando se ingresa RFC.',
+            'fiscales.*.telefono_fiscal.regex' => 'El teléfono fiscal debe contener exactamente 10 dígitos numéricos.',
+            'fiscales.*.correo_fiscal.distinct' => 'El correo fiscal debe ser único en el formulario.',
         ]);
 
         DB::transaction(function () use ($request, $cliente) {
@@ -185,13 +220,48 @@ class ClienteController extends Controller
                 Password::sendResetLink(['email' => $user->email]);
             }
             
-            // 4) Actualizar o Crear Info Fiscal
-            if ($request->filled('fiscal.rfc')) {
-                $cliente->infoFiscal()->updateOrCreate(
-                    ['id_cliente' => $cliente->id_cliente], // Busca por cliente
-                    $request->input('fiscal')               // Guarda los datos
-                );
+            // 4) Sincronizar Info Fiscales (Múltiples)
+            $fiscalesEnviados = $request->input('fiscales', []);
+            $idsMantenidos = [];
+
+            foreach ($fiscalesEnviados as $fiscalData) {
+                // Si tiene RFC vacío, lo ignoramos
+                if (empty($fiscalData['rfc'])) {
+                    continue;
+                }
+
+                if (!empty($fiscalData['id'])) {
+                    // Actualizar existente
+                    $infoFiscal = \App\Models\InfoFiscal::find($fiscalData['id']);
+                    if ($infoFiscal && $infoFiscal->id_cliente == $cliente->id_cliente) {
+                        $infoFiscal->update([
+                            'rfc'              => $fiscalData['rfc'],
+                            'razon_social'     => $fiscalData['razon_social'],
+                            'regimen'          => $fiscalData['regimen'] ?? null,
+                            'correo_fiscal'    => $fiscalData['correo_fiscal'] ?? null,
+                            'telefono_fiscal'  => $fiscalData['telefono_fiscal'] ?? null,
+                            'direccion_fiscal' => $fiscalData['direccion_fiscal'] ?? null,
+                        ]);
+                        $idsMantenidos[] = $infoFiscal->id_fiscal;
+                    }
+                } else {
+                    // Crear nuevo
+                    $nuevo = $cliente->infosFiscales()->create([
+                        'rfc'              => $fiscalData['rfc'],
+                        'razon_social'     => $fiscalData['razon_social'],
+                        'regimen'          => $fiscalData['regimen'] ?? null,
+                        'correo_fiscal'    => $fiscalData['correo_fiscal'] ?? null,
+                        'telefono_fiscal'  => $fiscalData['telefono_fiscal'] ?? null,
+                        'direccion_fiscal' => $fiscalData['direccion_fiscal'] ?? null,
+                    ]);
+                    $idsMantenidos[] = $nuevo->id_fiscal;
+                }
             }
+
+            // Eliminar los que ya no están en el formulario
+            $cliente->infosFiscales()
+                ->whereNotIn('id_fiscal', $idsMantenidos)
+                ->delete();
         });
 
         // Verificamos si hubo cambio de correo para mandar un mensaje más específico
@@ -291,30 +361,6 @@ class ClienteController extends Controller
             return redirect()->route('clientes.index')
                 ->with('success', 'Cliente reactivado correctamente (Bitácora actualizada).');
         }
-    }
-
-    public function destroyFiscal(Request $request, Cliente $cliente)
-    {
-        // 1. Validar que escribieron una contraseña
-        $request->validate([
-            'password_confirm' => 'required|string',
-        ]);
-
-        // 2. Verificar si la contraseña del ADMIN es correcta
-        if (!Hash::check($request->password_confirm, Auth::user()->password)) {
-            // Si falla, regresamos con un error específico
-            return back()
-                ->withInput() // Mantiene los inputs abiertos
-                ->withErrors(['password_confirm' => 'La contraseña es incorrecta. No se eliminó nada.']);
-        }
-
-        // 3. Si la contraseña es correcta, borramos la info fiscal
-        if ($cliente->infoFiscal) {
-            $cliente->infoFiscal()->delete();
-        }
-
-        return redirect()->route('clientes.edit', $cliente->id_cliente)
-            ->with('success', 'Información fiscal eliminada correctamente.');
     }
 
     public function verificarPassword(Request $request)

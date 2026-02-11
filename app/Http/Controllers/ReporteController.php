@@ -292,7 +292,8 @@ class ReporteController extends Controller
         $orden = $request->input('orden', 'dias_restantes'); // Default: próximas a vencer
         $direccion = $request->input('direccion', 'asc');
 
-        $query = \App\Models\Suscripcion::with('categoria');
+        $query = \App\Models\Suscripcion::with('categoria')
+            ->where('estatus', 'activo'); // Solo suscripciones activas
 
         // Aplicar filtros
         if ($idCategoria) {
@@ -326,17 +327,17 @@ class ReporteController extends Controller
 
         // === MÉTRICAS AVANZADAS PARA TOMA DE DECISIONES ===
         
-        // 1. Totales por periodicidad
-        $totalGastoMensual = $suscripciones->where('periodicidad', 'mensual')->sum('costo');
-        $totalGastoAnual = $suscripciones->where('periodicidad', 'anual')->sum('costo');
-        
-        // 2. Proyección anual (mensualizar todo para comparar)
+        // 1. Proyección anual (lo que pagarás en 12 meses) - Se calcula primero
         $proyeccionAnual = $suscripciones->sum(function ($sub) {
             return $sub->periodicidad === 'mensual' ? $sub->costo * 12 : $sub->costo;
         });
         
-        // 3. Promedio de costo por suscripción
-        $promedioCosto = $suscripciones->avg('costo');
+        // 2. Gasto Mensual Real (derivado de proyección para evitar errores de redondeo)
+        $gastoMensualReal = $proyeccionAnual / 12;
+        
+        // 3. Costo Promedio Mensual por suscripción (normalizado)
+        $cantidadSuscripciones = $suscripciones->count();
+        $promedioCosto = $cantidadSuscripciones > 0 ? $gastoMensualReal / $cantidadSuscripciones : 0;
         
         // 4. Alertas de vencimiento
         $vencenEn7Dias = $suscripciones->filter(function ($sub) {
@@ -392,8 +393,7 @@ class ReporteController extends Controller
             
             $pdf = \PDF::loadView('admin.reportes.pdf_suscripciones', compact(
                 'suscripciones', 
-                'totalGastoMensual', 
-                'totalGastoAnual',
+                'gastoMensualReal', 
                 'proyeccionAnual',
                 'promedioCosto',
                 'vencenEn7Dias',
@@ -415,8 +415,7 @@ class ReporteController extends Controller
             'suscripciones', 
             'categorias', 
             'datosGrafica', 
-            'totalGastoMensual', 
-            'totalGastoAnual',
+            'gastoMensualReal', 
             'proyeccionAnual',
             'promedioCosto',
             'vencenEn7Dias',
@@ -554,9 +553,10 @@ class ReporteController extends Controller
             $nombreMes = $fechaMes->locale('es')->monthName;
             $nombreMesCorto = $fechaMes->locale('es')->shortMonthName;
             
-            // A. Altas Reales = Nuevos Registros + Reactivaciones
-            $nuevos = \App\Models\Cliente::whereYear('fecha_registro', $anio)
-                ->whereMonth('fecha_registro', $mes)
+            // A. Altas Reales (Desde Bitácora: alta + reactivacion)
+            $nuevos = \App\Models\BitacoraCliente::where('accion', 'alta')
+                ->whereYear('fecha_movimiento', $anio)
+                ->whereMonth('fecha_movimiento', $mes)
                 ->count();
                 
             $reactivaciones = \App\Models\BitacoraCliente::where('accion', 'reactivacion')
@@ -567,20 +567,10 @@ class ReporteController extends Controller
             $altasMes = $nuevos + $reactivaciones;
 
             // B. Bajas Reales (Desde Bitácora)
-            // Si la bitácora está vacía (años anteriores), fallback a fecha_baja de tabla clientes
-            $bajasBitacora = \App\Models\BitacoraCliente::where('accion', 'baja')
+            $bajasMes = \App\Models\BitacoraCliente::where('accion', 'baja')
                 ->whereYear('fecha_movimiento', $anio)
                 ->whereMonth('fecha_movimiento', $mes)
                 ->count();
-                
-            // Fallback para datos legacy si no hay registros en bitácora en todo el año
-            if ($bajasBitacora == 0 && $anio < 2026) {
-                 $bajasMes = \App\Models\Cliente::whereYear('fecha_baja', $anio)
-                    ->whereMonth('fecha_baja', $mes)
-                    ->count();
-            } else {
-                $bajasMes = $bajasBitacora;
-            }
 
             // Cálculo saldo
             $totalAcumulado = $totalAcumulado + $altasMes - $bajasMes;

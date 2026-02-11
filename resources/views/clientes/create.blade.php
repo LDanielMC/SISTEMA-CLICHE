@@ -5,15 +5,92 @@
         </h2>
     </x-slot>
 
+    <script>
+        window.__clienteFiscales = @json(array_values(old('fiscales', [])));
+        window.__fiscalErrors = @json($errors->get('fiscales.*'));
+    </script>
+
     <div class="py-8">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 
                 {{-- INICIO DEL FORMULARIO --}}
-                {{-- Usamos x-data de Alpine.js para controlar la visibilidad de la sección fiscal --}}
-                {{-- Si hay errores en 'fiscal' o hay datos antiguos (old), se inicia como true (abierto) --}}
+                {{-- Usamos x-data de Alpine.js para controlar múltiples info fiscales --}}
                 <form action="{{ route('clientes.store') }}" method="POST" 
-                      x-data="{ showFiscal: {{ $errors->has('fiscal.*') || old('fiscal.rfc') ? 'true' : 'false' }} }">
+                      @submit.prevent="validateAndSubmit($event)"
+                      x-data="{ 
+                          showFiscal: {{ $errors->has('fiscales.*') || old('fiscales') ? 'true' : 'false' }},
+                          fiscales: window.__clienteFiscales,
+                          fiscalErrors: window.__fiscalErrors,
+                          
+                          getError(index, field) {
+                              let key = 'fiscales.' + index + '.' + field;
+                              return this.fiscalErrors[key] ? this.fiscalErrors[key][0] : '';
+                          },
+                          
+                          validateFiscales() {
+                              this.fiscalErrors = {};
+                              let valid = true;
+                              
+                              this.fiscales.forEach((fiscal, i) => {
+                                  // RFC duplicado
+                                  if (fiscal.rfc && fiscal.rfc.trim() !== '') {
+                                      let duplicado = this.fiscales.findIndex((f, j) => j !== i && f.rfc && f.rfc.trim().toUpperCase() === fiscal.rfc.trim().toUpperCase());
+                                      if (duplicado !== -1) {
+                                          this.fiscalErrors['fiscales.' + i + '.rfc'] = ['El RFC debe ser único en el formulario.'];
+                                          valid = false;
+                                      }
+                                  }
+                                  
+                                  // Correo fiscal duplicado
+                                  if (fiscal.correo_fiscal && fiscal.correo_fiscal.trim() !== '') {
+                                      let duplicado = this.fiscales.findIndex((f, j) => j !== i && f.correo_fiscal && f.correo_fiscal.trim().toLowerCase() === fiscal.correo_fiscal.trim().toLowerCase());
+                                      if (duplicado !== -1) {
+                                          this.fiscalErrors['fiscales.' + i + '.correo_fiscal'] = ['El correo fiscal debe ser único en el formulario.'];
+                                          valid = false;
+                                      }
+                                  }
+                                  
+                                  // Teléfono fiscal: exactamente 10 dígitos
+                                  if (fiscal.telefono_fiscal && fiscal.telefono_fiscal.trim() !== '') {
+                                      if (!/^[0-9]{10}$/.test(fiscal.telefono_fiscal.trim())) {
+                                          this.fiscalErrors['fiscales.' + i + '.telefono_fiscal'] = ['El teléfono fiscal debe contener exactamente 10 dígitos numéricos.'];
+                                          valid = false;
+                                      }
+                                  }
+                              });
+                              
+                              return valid;
+                          },
+                          
+                          validateAndSubmit(event) {
+                              if (this.fiscales.length > 0 && !this.validateFiscales()) {
+                                  this.showFiscal = true;
+                                  this.$nextTick(() => {
+                                      let firstError = document.querySelector('[data-fiscal-error]');
+                                      if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  });
+                                  return;
+                              }
+                              event.target.submit();
+                          },
+                          
+                          agregarFiscal() {
+                              this.fiscales.push({
+                                  rfc: '',
+                                  razon_social: '',
+                                  regimen: '',
+                                  correo_fiscal: '',
+                                  telefono_fiscal: '',
+                                  direccion_fiscal: ''
+                              });
+                          },
+                          
+                          eliminarFiscal(index) {
+                              this.fiscales.splice(index, 1);
+                              this.validateFiscales();
+                          }
+                      }">
                     @csrf
 
                     {{-- ================= SECCIÓN 1: DATOS GENERALES ================= --}}
@@ -54,7 +131,11 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Teléfono</label>
                                 <input type="text" name="telefono" value="{{ old('telefono') }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                       inputmode="numeric" maxlength="10" pattern="[0-9]{10}"
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                       placeholder="10 dígitos"
+                                       required>
                                 @error('telefono') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                             </div>
                         </div>
@@ -84,69 +165,133 @@
                         </div>
                     </div>
 
-                    {{-- ================= SEPARADOR Y TOGGLE ================= --}}
-                    <div class="my-8 border-t border-gray-200 pt-4">
+                    {{-- ================= SECCIÓN FISCAL (MÚLTIPLES) ================= --}}
+                    <div class="my-8 border-t border-gray-200 pt-4 flex justify-between items-center">
                         <label class="inline-flex items-center cursor-pointer">
                             <input type="checkbox" x-model="showFiscal" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                            <span class="ml-2 text-gray-800 font-semibold">¿Agregar información fiscal ahora?</span>
+                            <span class="ml-2 text-gray-800 font-semibold">
+                                Información Fiscal (<span x-text="fiscales.length"></span>)
+                            </span>
                         </label>
+
+                        <button type="button" 
+                                @click="showFiscal = true; agregarFiscal()"
+                                class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                            + Agregar Datos Fiscales
+                        </button>
                     </div>
 
-                    {{-- ================= SECCIÓN 2: DATOS FISCALES ================= --}}
-                    {{-- x-show controla la visibilidad. x-transition hace que se vea suave --}}
-                    <div x-show="showFiscal" x-transition class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Datos de Facturación</h3>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {{-- RFC --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">RFC</label>
-                                <input type="text" name="fiscal[rfc]" value="{{ old('fiscal.rfc') }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm uppercase">
-                                @error('fiscal.rfc') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                    <div x-show="showFiscal" x-transition class="space-y-4 mb-6">
+                        {{-- Errores de validación fiscal --}}
+                        @if($errors->has('fiscales.*'))
+                            <div class="bg-red-50 border border-red-300 rounded-lg p-4">
+                                <h4 class="text-red-800 font-semibold text-sm mb-2">⚠️ Errores en la información fiscal:</h4>
+                                <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                                    @foreach(collect($errors->get('fiscales.*'))->flatten()->unique()->values() as $message)
+                                        <li>{{ $message }}</li>
+                                    @endforeach
+                                </ul>
                             </div>
+                        @endif
 
-                            {{-- Razón Social --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Razón Social</label>
-                                <input type="text" name="fiscal[razon_social]" value="{{ old('fiscal.razon_social') }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm uppercase">
-                                @error('fiscal.razon_social') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                        {{-- Mensaje si no hay info fiscal --}}
+                        <template x-if="fiscales.length === 0">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300 text-center">
+                                <p class="text-gray-500">No hay información fiscal registrada.</p>
+                                <button type="button" @click="agregarFiscal()" 
+                                        class="mt-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                    + Agregar primera información fiscal
+                                </button>
                             </div>
+                        </template>
 
-                            {{-- Régimen Fiscal --}}
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700">Régimen Fiscal</label>
-                                <input type="text" name="fiscal[regimen]" value="{{ old('fiscal.regimen') }}"
-                                       placeholder="Ej: 601 - General de Ley Personas Morales"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                @error('fiscal.regimen') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                            </div>
+                        {{-- Iteración sobre cada info fiscal --}}
+                        <template x-for="(fiscal, index) in fiscales" :key="index">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                                {{-- Header con número y botón eliminar --}}
+                                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 class="text-lg font-medium text-gray-900">
+                                        Datos Fiscales #<span x-text="index + 1"></span>
+                                    </h3>
+                                    <button type="button" @click="eliminarFiscal(index)" 
+                                            class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                        🗑️ Eliminar
+                                    </button>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {{-- RFC --}}
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">RFC *</label>
+                                        <input type="text" :name="'fiscales[' + index + '][rfc]'" 
+                                               x-model="fiscal.rfc"
+                                               :class="getError(index, 'rfc') ? 'border-red-500' : 'border-gray-300'"
+                                               class="mt-1 block w-full rounded-md shadow-sm uppercase"
+                                               required>
+                                        <p x-show="getError(index, 'rfc')" x-text="getError(index, 'rfc')" class="text-sm text-red-600 mt-1" data-fiscal-error></p>
+                                    </div>
 
-                            {{-- Correo Fiscal --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Correo para Facturación</label>
-                                <input type="email" name="fiscal[correo_fiscal]" value="{{ old('fiscal.correo_fiscal') }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                @error('fiscal.correo_fiscal') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                            </div>
+                                    {{-- Razón Social --}}
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Razón Social *</label>
+                                        <input type="text" :name="'fiscales[' + index + '][razon_social]'" 
+                                               x-model="fiscal.razon_social"
+                                               :class="getError(index, 'razon_social') ? 'border-red-500' : 'border-gray-300'"
+                                               class="mt-1 block w-full rounded-md shadow-sm uppercase"
+                                               required>
+                                        <p x-show="getError(index, 'razon_social')" x-text="getError(index, 'razon_social')" class="text-sm text-red-600 mt-1"></p>
+                                    </div>
 
-                            {{-- Teléfono Fiscal --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Teléfono Fiscal</label>
-                                <input type="text" name="fiscal[telefono_fiscal]" value="{{ old('fiscal.telefono_fiscal') }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                @error('fiscal.telefono_fiscal') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                            </div>
+                                    {{-- Régimen --}}
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Régimen Fiscal</label>
+                                        <input type="text" :name="'fiscales[' + index + '][regimen]'" 
+                                               x-model="fiscal.regimen"
+                                               placeholder="Ej: 601 - General de Ley Personas Morales"
+                                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                    </div>
 
-                            {{-- Dirección Fiscal --}}
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700">Dirección Fiscal Completa</label>
-                                <input type="text" name="fiscal[direccion_fiscal]" value="{{ old('fiscal.direccion_fiscal') }}"
-                                       placeholder="Calle, Número, Colonia, CP, Municipio, Estado"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                @error('fiscal.direccion_fiscal') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                                    {{-- Correo Fiscal --}}
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Correo Facturación</label>
+                                        <input type="email" :name="'fiscales[' + index + '][correo_fiscal]'" 
+                                               x-model="fiscal.correo_fiscal"
+                                               :class="getError(index, 'correo_fiscal') ? 'border-red-500' : 'border-gray-300'"
+                                               class="mt-1 block w-full rounded-md shadow-sm">
+                                        <p x-show="getError(index, 'correo_fiscal')" x-text="getError(index, 'correo_fiscal')" class="text-sm text-red-600 mt-1" data-fiscal-error></p>
+                                    </div>
+
+                                    {{-- Teléfono Fiscal --}}
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Teléfono Fiscal</label>
+                                        <input type="text" :name="'fiscales[' + index + '][telefono_fiscal]'" 
+                                               x-model="fiscal.telefono_fiscal"
+                                               inputmode="numeric" maxlength="10" pattern="[0-9]{10}"
+                                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                               placeholder="10 dígitos"
+                                               :class="getError(index, 'telefono_fiscal') ? 'border-red-500' : 'border-gray-300'"
+                                               class="mt-1 block w-full rounded-md shadow-sm">
+                                        <p x-show="getError(index, 'telefono_fiscal')" x-text="getError(index, 'telefono_fiscal')" class="text-sm text-red-600 mt-1" data-fiscal-error></p>
+                                    </div>
+
+                                    {{-- Dirección Fiscal --}}
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Dirección Fiscal Completa</label>
+                                        <input type="text" :name="'fiscales[' + index + '][direccion_fiscal]'" 
+                                               x-model="fiscal.direccion_fiscal"
+                                               placeholder="Calle, Número, Colonia, CP, Municipio, Estado"
+                                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                    </div>
+                                </div>
                             </div>
+                        </template>
+
+                        {{-- Botón para agregar más (abajo de la lista) --}}
+                        <div x-show="fiscales.length > 0" class="text-center">
+                            <button type="button" @click="agregarFiscal()" 
+                                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium border border-indigo-300 px-4 py-2 rounded-md hover:bg-indigo-50">
+                                + Agregar otra información fiscal
+                            </button>
                         </div>
                     </div>
 

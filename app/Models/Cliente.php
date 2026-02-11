@@ -37,6 +37,13 @@ class Cliente extends Model
     ];
 
     
+    // Relación 1-M: Un cliente puede tener múltiples datos fiscales
+    public function infosFiscales()
+    {
+        return $this->hasMany(InfoFiscal::class, 'id_cliente', 'id_cliente');
+    }
+
+    // Método helper: Obtiene la primera info fiscal (para compatibilidad)
     public function infoFiscal()
     {
         return $this->hasOne(InfoFiscal::class, 'id_cliente', 'id_cliente');

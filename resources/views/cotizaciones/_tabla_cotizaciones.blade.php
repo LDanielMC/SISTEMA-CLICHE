@@ -94,6 +94,16 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
                         </a>
+                        {{-- Enviar PDF por correo --}}
+                        <form action="{{ route('cotizaciones.sendPdf', $cot->id_cotizacion) }}" method="POST" class="inline"
+                              onsubmit="return confirm('¿Enviar cotización #{{ str_pad($cot->id_cotizacion, 5, '0', STR_PAD_LEFT) }} al correo de {{ $cot->cliente->nombre }}?\n\nSe enviará a: {{ $cot->cliente->user->email }}');">
+                            @csrf
+                            <button type="submit" class="text-gray-400 hover:text-emerald-600 transition-colors" title="Enviar PDF por correo a {{ $cot->cliente->user->email }}">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                        </form>
                         {{-- Editar --}}
                         <a href="{{ route('cotizaciones.edit', $cot->id_cotizacion) }}" 
                            class="text-gray-400 hover:text-indigo-600 transition-colors" title="Editar">

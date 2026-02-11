@@ -256,92 +256,61 @@
                             </div>
                         </a> -->
 
-                        {{-- ✅ Tarjeta Categorías --}}
-                        <a href="{{ route('categorias.index') }}"
-                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
-                            <div class="p-6 flex items-start gap-4">
-                                <div class="shrink-0 w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                                    </svg>
-                                </div>
+                        {{-- ✅ Tarjeta Tareas con Submenú --}}
+                        <div x-data="{ open: false }" class="relative rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <button @click="open = !open" class="w-full text-left">
+                                <div class="p-6 flex items-start gap-4">
+                                    <div class="shrink-0 w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center border border-orange-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                        </svg>
+                                    </div>
 
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-purple-600 transition-colors">
-                                        Catálogo Tareas
-                                    </h3>
-                                    <p class="text-gray-600 text-sm mt-1">
-                                        Gestionar categorías para clasificación de tareas.
-                                    </p>
-                                </div>
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-bold text-gray-800 transition-colors" :class="open ? 'text-orange-600' : ''">
+                                            Tareas
+                                        </h3>
+                                        <p class="text-gray-600 text-sm mt-1">
+                                            Gestionar categorías, tareas y asignaciones del equipo.
+                                        </p>
+                                    </div>
 
-                                <div class="text-gray-400 group-hover:text-purple-600 transition-colors">
-                                    <span class="text-xl">&rsaquo;</span>
+                                    <div class="text-gray-400 transition-transform duration-200" :class="open ? 'rotate-90 text-orange-600' : ''">
+                                        <span class="text-xl">&rsaquo;</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {{-- Submenú de tareas --}}
+                            <div x-show="open" 
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 -translate-y-2"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-150"
+                                 x-transition:leave-start="opacity-100 translate-y-0"
+                                 x-transition:leave-end="opacity-0 -translate-y-2"
+                                 class="border-t border-gray-100 bg-gray-50/80">
+                                <div class="grid grid-cols-1 divide-y divide-gray-100">
+                                    <a href="{{ route('categorias.index') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">🏷️</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-orange-600">Catálogo de Tareas</span>
+                                    </a>
+                                    <a href="{{ route('tareas.index') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">📋</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-orange-600">Gestión de Tareas</span>
+                                    </a>
+                                    <a href="{{ route('asignaciones.index') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">👥</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-orange-600">Asignación de Tareas</span>
+                                    </a>
                                 </div>
                             </div>
+
                             <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
-                                <span>Administrar categorías</span>
-                                <span class="text-purple-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
+                                <span>3 opciones disponibles</span>
+                                <span class="text-orange-600 font-semibold" x-text="open ? 'Cerrar ↑' : 'Ver opciones ↓'"></span>
                             </div>
-                        </a>
-
-                        {{-- ✅ Tarjeta Tareas --}}
-                        <a href="{{ route('tareas.index') }}"
-                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
-                            <div class="p-6 flex items-start gap-4">
-                                <div class="shrink-0 w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center border border-orange-100">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                                    </svg>
-                                </div>
-
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
-                                        Gestión de Tareas
-                                    </h3>
-                                    <p class="text-gray-600 text-sm mt-1">
-                                        Organizar y administrar tareas internas del equipo.
-                                    </p>
-                                </div>
-
-                                <div class="text-gray-400 group-hover:text-orange-600 transition-colors">
-                                    <span class="text-xl">&rsaquo;</span>
-                                </div>
-                            </div>
-                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
-                                <span>Ver tareas</span>
-                                <span class="text-orange-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
-                            </div>
-                        </a>
-
-                        {{-- ✅ Tarjeta Asignaciones --}}
-                        <a href="{{ route('asignaciones.index') }}"
-                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
-                            <div class="p-6 flex items-start gap-4">
-                                <div class="shrink-0 w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                                    </svg>
-                                </div>
-
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">
-                                        Asignación de Tareas
-                                    </h3>
-                                    <p class="text-gray-600 text-sm mt-1">
-                                        Asignar tareas a empleados y evaluar su desempeño.
-                                    </p>
-                                </div>
-
-                                <div class="text-gray-400 group-hover:text-indigo-600 transition-colors">
-                                    <span class="text-xl">&rsaquo;</span>
-                                </div>
-                            </div>
-                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
-                                <span>Gestionar asignaciones</span>
-                                <span class="text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
-                            </div>
-                        </a>
+                        </div>
 
                         {{-- ✅ Tarjeta Calendario de Eventos --}}
                         <a href="{{ route('eventos.index') }}"
@@ -371,6 +340,132 @@
                                 <span class="text-teal-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
                             </div>
                         </a>
+
+                        {{-- ✅ Tarjeta Briefs --}}
+                        <a href="{{ route('briefs.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-amber-600 transition-colors">
+                                        Briefs
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Gestionar briefs y encuestas de clientes.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-amber-600 transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
+                            </div>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Ver briefs</span>
+                                <span class="text-amber-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
+                            </div>
+                        </a>
+
+                        {{-- ✅ Tarjeta Respaldos --}}
+                        <a href="{{ route('backups.index') }}"
+                           class="group block rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <div class="p-6 flex items-start gap-4">
+                                <div class="shrink-0 w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                    </svg>
+                                </div>
+
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-slate-600 transition-colors">
+                                        Respaldos
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">
+                                        Crear y restaurar respaldos de la base de datos.
+                                    </p>
+                                </div>
+
+                                <div class="text-gray-400 group-hover:text-slate-600 transition-colors">
+                                    <span class="text-xl">&rsaquo;</span>
+                                </div>
+                            </div>
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>Gestionar respaldos</span>
+                                <span class="text-slate-600 font-semibold group-hover:translate-x-1 transition-transform">Ir &rarr;</span>
+                            </div>
+                        </a>
+
+                        {{-- ✅ Tarjeta Reportes con Submenú --}}
+                        <div x-data="{ open: false }" class="relative rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md overflow-hidden">
+                            <button @click="open = !open" class="w-full text-left">
+                                <div class="p-6 flex items-start gap-4">
+                                    <div class="shrink-0 w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    </div>
+
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-bold text-gray-800 transition-colors" :class="open ? 'text-rose-600' : ''">
+                                            Reportes
+                                        </h3>
+                                        <p class="text-gray-600 text-sm mt-1">
+                                            Analizar métricas de desempeño y crecimiento.
+                                        </p>
+                                    </div>
+
+                                    <div class="text-gray-400 transition-transform duration-200" :class="open ? 'rotate-90 text-rose-600' : ''">
+                                        <span class="text-xl">&rsaquo;</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {{-- Submenú de reportes --}}
+                            <div x-show="open" 
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 -translate-y-2"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-150"
+                                 x-transition:leave-start="opacity-100 translate-y-0"
+                                 x-transition:leave-end="opacity-0 -translate-y-2"
+                                 class="border-t border-gray-100 bg-gray-50/80">
+                                <div class="grid grid-cols-1 divide-y divide-gray-100">
+                                    <a href="{{ route('reportes.cumplimiento') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">📊</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-rose-600">Cumplimiento y Puntualidad</span>
+                                    </a>
+                                    <a href="{{ route('reportes.efectividad') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">💰</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-rose-600">Efectividad Cotizaciones</span>
+                                    </a>
+                                    <a href="{{ route('reportes.carga_trabajo') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">⚙️</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-rose-600">Carga de Trabajo</span>
+                                    </a>
+                                    <a href="{{ route('reportes.suscripciones') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">📦</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-rose-600">Suscripciones y Costos</span>
+                                    </a>
+                                    <a href="{{ route('reportes.acuerdos_cliente') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">🤝</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-rose-600">Acuerdos por Cliente</span>
+                                    </a>
+                                    <a href="{{ route('reportes.crecimiento_clientes') }}" class="px-6 py-3 flex items-center gap-3 hover:bg-white transition">
+                                        <span class="text-lg">📈</span>
+                                        <span class="text-sm font-medium text-gray-700 hover:text-rose-600">Crecimiento de Clientes</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="px-6 py-2 border-t border-gray-100 text-xs text-gray-500 bg-gray-50/60 flex justify-between">
+                                <span>6 reportes disponibles</span>
+                                <span class="text-rose-600 font-semibold" x-text="open ? 'Cerrar ↑' : 'Ver opciones ↓'"></span>
+                            </div>
+                        </div>
 
                     </div>
 

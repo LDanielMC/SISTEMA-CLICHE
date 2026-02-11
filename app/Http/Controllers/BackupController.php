@@ -57,32 +57,29 @@ class BackupController extends Controller
             $dbUser = config('database.connections.mysql.username');
             $dbPassword = config('database.connections.mysql.password');
 
-            // Comando mysqldump
-            // Nota: Se asume que mysqldump está en el PATH o accesible.
-            // Es importante no poner la contraseña pegada al flag -p sin espacio si se usa esa sintaxis, 
-            // pero en consola la sintaxis es -pPASSWORD (sin espacio).
-            // Una forma segura es usar archivo de configuración temporal o variables de entorno, 
-            // pero para simplicidad y dado el entorno, usaremos la cadena de comando con cuidado.
+            // Ruta completa a mysqldump en WAMP
+            $mysqldumpPath = env('MYSQLDUMP_PATH', 'C:\\wamp64\\bin\\mysql\\mysql9.1.0\\bin\\mysqldump.exe');
             
-            $command = sprintf(
-                'mysqldump --user=%s --password=%s --host=%s --port=%s %s > %s',
-                escapeshellarg($dbUser),
-                escapeshellarg($dbPassword),
-                escapeshellarg($dbHost),
-                escapeshellarg($dbPort),
-                escapeshellarg($dbName),
-                escapeshellarg($path)
-            );
+            // Construir comando - en Windows no usar escapeshellarg para evitar problemas
+            if (empty($dbPassword)) {
+                $command = "\"{$mysqldumpPath}\" --user={$dbUser} --host={$dbHost} --port={$dbPort} {$dbName} > \"{$path}\" 2>&1";
+            } else {
+                $command = "\"{$mysqldumpPath}\" --user={$dbUser} --password={$dbPassword} --host={$dbHost} --port={$dbPort} {$dbName} > \"{$path}\" 2>&1";
+            }
 
-            // Ejecutar comando
-            $output = null;
-            $resultCode = null;
-            exec($command, $output, $resultCode);
-
-            if ($resultCode === 0) {
+            // Ejecutar comando usando shell_exec para Windows
+            $result = shell_exec($command);
+            
+            // Verificar si el archivo se creó y tiene contenido
+            if (file_exists($path) && filesize($path) > 0) {
                 return redirect()->route('backups.index')->with('success', 'Respaldo generado exitosamente: ' . $filename);
             } else {
-                return redirect()->route('backups.index')->with('error', 'Error al generar el respaldo. Código de salida: ' . $resultCode);
+                // Limpiar archivo vacío si existe
+                if (file_exists($path)) {
+                    unlink($path);
+                }
+                $errorMsg = $result ? $result : 'No se pudo generar el respaldo';
+                return redirect()->route('backups.index')->with('error', 'Error al generar el respaldo: ' . $errorMsg);
             }
 
         } catch (\Exception $e) {
@@ -129,25 +126,26 @@ class BackupController extends Controller
             $dbUser = config('database.connections.mysql.username');
             $dbPassword = config('database.connections.mysql.password');
 
-            // Comando mysql para restaurar
-            $command = sprintf(
-                'mysql --user=%s --password=%s --host=%s --port=%s %s < %s',
-                escapeshellarg($dbUser),
-                escapeshellarg($dbPassword),
-                escapeshellarg($dbHost),
-                escapeshellarg($dbPort),
-                escapeshellarg($dbName),
-                escapeshellarg($path)
-            );
-
-            $output = null;
-            $resultCode = null;
-            exec($command, $output, $resultCode);
-
-            if ($resultCode === 0) {
-                return redirect()->route('backups.index')->with('success', 'Base de datos restaurada exitosamente desde: ' . $filename);
+            // Ruta completa a mysql en WAMP
+            $mysqlPath = env('MYSQL_PATH', 'C:\\wamp64\\bin\\mysql\\mysql9.1.0\\bin\\mysql.exe');
+            
+            // Usar --execute con source para evitar problemas con redirección en Windows
+            $pathForwardSlash = str_replace('\\', '/', $path);
+            
+            if (empty($dbPassword)) {
+                $command = "\"{$mysqlPath}\" --user={$dbUser} --host={$dbHost} --port={$dbPort} {$dbName} -e \"source {$pathForwardSlash}\" 2>&1";
             } else {
-                return redirect()->route('backups.index')->with('error', 'Error al restaurar la base de datos. Código de salida: ' . $resultCode);
+                $command = "\"{$mysqlPath}\" --user={$dbUser} --password={$dbPassword} --host={$dbHost} --port={$dbPort} {$dbName} -e \"source {$pathForwardSlash}\" 2>&1";
+            }
+
+            $result = shell_exec($command);
+            
+            // Verificar resultado - si no hay error en el output, fue exitoso
+            // Usamos query string porque la sesión se restaura junto con la BD
+            if ($result === null || $result === '' || stripos($result, 'ERROR') === false) {
+                return redirect()->route('backups.index', ['restored' => 1, 'file' => $filename]);
+            } else {
+                return redirect()->route('backups.index', ['restore_error' => urlencode($result)]);
             }
 
         } catch (\Exception $e) {

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
 
 class LoginRequest extends FormRequest
 {
@@ -47,6 +48,31 @@ class LoginRequest extends FormRequest
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
+        }
+
+        // Verificar estatus del empleado o cliente
+        $user = Auth::user();
+        
+        // Si es empleado, verificar que esté activo
+        if ($user->rol === 'empleado') {
+            $empleado = $user->empleado;
+            if ($empleado && $empleado->estatus === 'baja') {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'Tu cuenta de empleado ha sido dada de baja. Contacta al administrador.',
+                ]);
+            }
+        }
+        
+        // Si es cliente, verificar que esté activo
+        if ($user->rol === 'cliente') {
+            $cliente = $user->cliente;
+            if ($cliente && $cliente->estatus === 'inactivo') {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'Tu cuenta de cliente está inactiva. Contacta al administrador.',
+                ]);
+            }
         }
 
         RateLimiter::clear($this->throttleKey());

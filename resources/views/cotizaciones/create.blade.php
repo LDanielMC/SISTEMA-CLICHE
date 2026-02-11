@@ -13,7 +13,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 
-                <form action="{{ route('cotizaciones.store') }}" method="POST">
+                <form action="{{ route('cotizaciones.store') }}" method="POST" @submit.prevent="submitForm($event)">
                     @csrf
 
                     {{-- ================= SECCIÓN 1: CABECERA (DATOS GENERALES) ================= --}}
@@ -31,7 +31,7 @@
                         {{-- Cliente --}}
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700">Cliente</label>
-                            <select name="id_cliente" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            <select name="id_cliente" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                                 <option value="">-- Seleccionar Cliente --</option>
                                 @foreach($clientes as $cliente)
                                     <option value="{{ $cliente->id_cliente }}" {{ old('id_cliente') == $cliente->id_cliente ? 'selected' : '' }}>
@@ -46,7 +46,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Fecha Emisión</label>
                             <input type="date" name="fecha" value="{{ old('fecha', date('Y-m-d')) }}" 
-                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                             @error('fecha') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
 
@@ -54,7 +54,8 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Vence en (días)</label>
                             <input type="number" name="vencimiento_dias" value="{{ old('vencimiento_dias', 7) }}" min="1"
-                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                            @error('vencimiento_dias') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
 
                         {{-- Introducción --}}
@@ -97,8 +98,8 @@
                                         {{-- Precio U. (Mínimo 130px) --}}
                                         <th class="px-4 py-3 min-w-[130px] text-right">Precio U.</th>
                                         
-                                        {{-- IVA (Mínimo 100px) --}}
-                                        <th class="px-4 py-3 min-w-[110px] text-right">IVA ($)</th>
+                                        {{-- IVA % y $ (Mínimo 180px) --}}
+                                        <th class="px-4 py-3 min-w-[180px] text-right">IVA (% / $)</th>
                                         
                                         {{-- Total (Mínimo 120px) --}}
                                         <th class="px-4 py-3 min-w-[120px] text-right">Total</th>
@@ -135,31 +136,48 @@
                                             {{-- Título (Textarea) --}}
                                             <td class="px-4 py-2 align-top">
                                                 <textarea :name="'partidas['+index+'][titulo]'" x-model="row.titulo" rows="2"
-                                                       class="w-full text-sm border-gray-300 rounded-md font-medium" placeholder="Ej. Mantenimiento" required></textarea>
+                                                       class="w-full text-sm rounded-md font-medium"
+                                                       :class="isDuplicate(index) ? 'border-red-500 bg-red-50' : 'border-gray-300'"
+                                                       placeholder="Ej. Mantenimiento" required></textarea>
+                                                <p x-show="isDuplicate(index)" style="color:#dc2626; font-size:12px; margin-top:2px;">⚠ Título duplicado</p>
                                             </td>
                                             
                                             {{-- Descripción --}}
                                             <td class="px-4 py-2 align-top">
                                                 <textarea :name="'partidas['+index+'][descripcion]'" x-model="row.descripcion" rows="2" 
-                                                          class="w-full text-sm border-gray-300 rounded-md"></textarea>
+                                                          class="w-full text-sm border-gray-300 rounded-md" required></textarea>
                                             </td>
 
                                             {{-- Cantidad --}}
                                             <td class="px-4 py-2 align-top">
                                                 <input type="number" step="0.01" :name="'partidas['+index+'][cantidad]'" x-model="row.cantidad" 
+                                                       @input="row.iva = calculateIvaFromPercent(row)"
                                                        class="w-full text-sm text-right border-gray-300 rounded-md" required>
                                             </td>
 
                                             {{-- Precio U. --}}
                                             <td class="px-4 py-2 align-top">
                                                 <input type="number" step="0.01" :name="'partidas['+index+'][precio_unitario]'" x-model="row.precio_unitario" 
+                                                       @input="row.iva = calculateIvaFromPercent(row)"
                                                        class="w-full text-sm text-right border-gray-300 rounded-md" required>
                                             </td>
 
-                                            {{-- IVA --}}
+                                            {{-- IVA % y $ --}}
                                             <td class="px-4 py-2 align-top">
-                                                <input type="number" step="0.01" :name="'partidas['+index+'][iva]'" x-model="row.iva" 
-                                                       class="w-full text-sm text-right border-gray-300 rounded-md text-gray-500">
+                                                <div class="flex items-center gap-1">
+                                                    <div class="flex items-center">
+                                                        <input type="number" step="0.01" min="0" max="100"
+                                                               x-model="row.iva_porcentaje" 
+                                                               @input="row.iva = calculateIvaFromPercent(row)"
+                                                               class="w-16 text-sm text-right border-gray-300 rounded-l-md focus:ring-emerald-500 focus:border-emerald-500"
+                                                               placeholder="16">
+                                                        <span class="px-1 py-1.5 bg-gray-100 border border-l-0 border-gray-300 text-gray-500 text-xs">%</span>
+                                                    </div>
+                                                    <input type="number" step="0.01" :name="'partidas['+index+'][iva]'" x-model="row.iva" 
+                                                           @input="row.iva_porcentaje = calculatePercentFromIva(row)"
+                                                           class="w-24 text-sm text-right border-gray-300 rounded-md text-gray-600"
+                                                           placeholder="0.00">
+                                                </div>
                                             </td>
 
                                             {{-- Total --}}
@@ -273,7 +291,10 @@
 
                 // Si hay old('partidas'), lo usamos.
                 // Si no, iniciamos con UNA fila vacía.
-                rows: partidasOld && partidasOld.length ? partidasOld : [
+                rows: partidasOld && partidasOld.length ? partidasOld.map(r => ({
+                    ...r,
+                    iva_porcentaje: r.iva_porcentaje || 0
+                })) : [
                     {
                         id_temp: Date.now(),
                         titulo: '',
@@ -281,6 +302,7 @@
                         cantidad: 1,
                         precio_unitario: 0,
                         iva: 0,
+                        iva_porcentaje: 16,
                     }
                 ],
 
@@ -292,7 +314,8 @@
                         descripcion: '',
                         cantidad: 1,
                         precio_unitario: 0,
-                        iva: 0
+                        iva: 0,
+                        iva_porcentaje: 16
                     };
                 },
 
@@ -332,11 +355,50 @@
                     }
                 },
 
+                // Verificar si el título de una partida está duplicado
+                isDuplicate(index) {
+                    let titulo = (this.rows[index].titulo || '').trim().toLowerCase();
+                    if (!titulo) return false;
+                    return this.rows.some((r, i) => i !== index && (r.titulo || '').trim().toLowerCase() === titulo);
+                },
+
+                // Verificar si hay algún duplicado en todas las partidas
+                hasDuplicates() {
+                    let titulos = this.rows.map(r => (r.titulo || '').trim().toLowerCase()).filter(t => t !== '');
+                    return titulos.length !== new Set(titulos).size;
+                },
+
+                // Enviar formulario solo si no hay duplicados
+                submitForm(event) {
+                    if (this.hasDuplicates()) {
+                        alert('Hay títulos de servicio duplicados. Por favor corrige antes de guardar.');
+                        return;
+                    }
+                    event.target.submit();
+                },
+
                 calculateLineTotal(row) {
                     let cant = parseFloat(row.cantidad) || 0;
                     let prec = parseFloat(row.precio_unitario) || 0;
                     let iva  = parseFloat(row.iva) || 0;
                     return (cant * prec) + iva;
+                },
+
+                calculateIvaFromPercent(row) {
+                    let cant = parseFloat(row.cantidad) || 0;
+                    let prec = parseFloat(row.precio_unitario) || 0;
+                    let pct = parseFloat(row.iva_porcentaje) || 0;
+                    let subtotal = cant * prec;
+                    return Math.round(subtotal * (pct / 100) * 100) / 100;
+                },
+
+                calculatePercentFromIva(row) {
+                    let cant = parseFloat(row.cantidad) || 0;
+                    let prec = parseFloat(row.precio_unitario) || 0;
+                    let iva = parseFloat(row.iva) || 0;
+                    let subtotal = cant * prec;
+                    if (subtotal === 0) return 0;
+                    return Math.round((iva / subtotal) * 100 * 100) / 100;
                 },
 
                 get netSubtotal() {

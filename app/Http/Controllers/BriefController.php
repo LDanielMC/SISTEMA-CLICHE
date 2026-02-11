@@ -212,14 +212,58 @@ class BriefController extends Controller
             return back()->with('error', 'El cliente ya tiene asignado este brief.');
         }
 
-        // Asignar
+        // Verificar si ya existe una respuesta en Google Forms para este cliente
+        $googleResponseId = null;
+        $estadoInicial = 'pendiente';
+        
+        if ($cliente->user && $cliente->user->email) {
+            try {
+                $clientEmail = strtolower(trim($cliente->user->email));
+                $responsesList = $this->googleFormsService->getFormResponses($brief->google_form_id);
+                $allResponses = $responsesList ? $responsesList->getResponses() : [];
+                
+                foreach ($allResponses as $response) {
+                    $respondentEmail = strtolower(trim($response->getRespondentEmail()));
+                    
+                    // Verificar coincidencia por email en metadata
+                    if ($respondentEmail === $clientEmail) {
+                        $googleResponseId = $response->getResponseId();
+                        $estadoInicial = 'recibido';
+                        break;
+                    }
+                    
+                    // Verificar coincidencia por email en el cuerpo de las respuestas
+                    $answers = $response->getAnswers();
+                    if ($answers) {
+                        foreach ($answers as $answer) {
+                            $textAnswers = $answer->getTextAnswers();
+                            if ($textAnswers && $textAnswers->getAnswers()) {
+                                foreach ($textAnswers->getAnswers() as $textAnswer) {
+                                    $val = strtolower(trim($textAnswer->getValue()));
+                                    if ($val === $clientEmail) {
+                                        $googleResponseId = $response->getResponseId();
+                                        $estadoInicial = 'recibido';
+                                        break 3;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Error verificando respuestas existentes al asignar: ' . $e->getMessage());
+            }
+        }
+
+        // Asignar con el estado y google_response_id detectados
         $brief->clientes()->attach($cliente->id_cliente, [
-            'estado' => 'pendiente',
+            'estado' => $estadoInicial,
             'fecha_envio' => now(),
+            'google_response_id' => $googleResponseId,
         ]);
 
-        // Enviar notificación y correo
-        if ($cliente->user) {
+        // Enviar notificación y correo solo si está pendiente
+        if ($cliente->user && $estadoInicial === 'pendiente') {
             try {
                 \Illuminate\Support\Facades\Mail::to($cliente->user->email)
                     ->send(new \App\Mail\BriefAssigned($brief, $cliente));
@@ -237,7 +281,11 @@ class BriefController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Brief asignado correctamente al cliente.');
+        $mensaje = $estadoInicial === 'recibido' 
+            ? 'Brief asignado. Se detectó una respuesta existente y fue vinculada automáticamente.'
+            : 'Brief asignado correctamente al cliente.';
+            
+        return back()->with('success', $mensaje);
     }
 
     /**
@@ -257,6 +305,43 @@ class BriefController extends Controller
         }
 
         return back()->with('success', 'Asignación eliminada correctamente.');
+    }
+
+    /**
+     * Solicita una nueva respuesta del cliente (reinicia el estado).
+     */
+    public function requestNewResponse(Brief $brief, $clienteId)
+    {
+        $cliente = Cliente::with('user')->findOrFail($clienteId);
+        
+        // Reiniciar el estado de la asignación
+        $brief->clientes()->updateExistingPivot($clienteId, [
+            'estado' => 'pendiente',
+            'google_response_id' => null,
+            'fecha_envio' => now(),
+            'fecha_ultimo_recordatorio' => null,
+        ]);
+
+        // Enviar notificación y correo
+        if ($cliente->user) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($cliente->user->email)
+                    ->send(new \App\Mail\BriefAssigned($brief, $cliente));
+            } catch (\Exception $e) {
+                Log::error('Error enviando correo de nueva solicitud: ' . $e->getMessage());
+            }
+
+            Notificacion::create([
+                'user_id' => $cliente->user->id,
+                'tipo' => 'alerta',
+                'titulo' => 'Nueva Respuesta Solicitada',
+                'mensaje' => "Se te ha solicitado una nueva respuesta para: {$brief->titulo}.",
+                'url' => $brief->form_url,
+                'leida' => false,
+            ]);
+        }
+
+        return back()->with('success', 'Se ha solicitado una nueva respuesta al cliente. Se reinició el estado y se envió notificación.');
     }
 
     /**
@@ -313,6 +398,13 @@ class BriefController extends Controller
                      // Si NO hay uno vinculado, buscamos candidatos
                      if (!$linkedResponseId) {
                          $respondentEmail = $response->getRespondentEmail();
+                         $submissionTime = \Carbon\Carbon::parse($response->getCreateTime());
+                         
+                         // FILTRO POR FECHA: Solo mostrar respuestas POSTERIORES a la fecha de envío
+                         // Esto permite que al solicitar "Nueva Respuesta", solo se muestren las nuevas
+                         if ($fechaEnvio && $submissionTime->lessThanOrEqualTo($fechaEnvio)) {
+                             continue; // Respuesta anterior al envío actual, no la mostramos
+                         }
                          
                          // Si el email pertenece a OTRO cliente asignado, lo ignoramos completamente aquí
                          if ($respondentEmail && in_array(strtolower(trim($respondentEmail)), $otherEmails)) {
@@ -322,7 +414,6 @@ class BriefController extends Controller
                          // Búsqueda profunda de email en las respuestas del cuerpo (para auto-verificación y EXCLUSIÓN)
                          $foundEmailInBody = false;
                          $bodyEmail = null;
-                         $submissionTime = \Carbon\Carbon::parse($response->getCreateTime());
 
                          $answers = $response->getAnswers();
                          if ($answers) {
@@ -349,6 +440,16 @@ class BriefController extends Controller
                          // 1. Coincidencia Exacta por Email (Metadata o Cuerpo)
                          if (($clientEmail && strtolower(trim($respondentEmail)) === strtolower(trim($clientEmail))) || $foundEmailInBody) {
                              $clientResponses[] = $response;
+                             
+                             // AUTO-VINCULAR: Si hay coincidencia exacta por email, guardar automáticamente
+                             if (!$linkedResponseId) {
+                                 $brief->clientes()->updateExistingPivot($clienteId, [
+                                     'google_response_id' => $responseId,
+                                     'estado' => 'recibido'
+                                 ]);
+                                 $linkedResponseId = $responseId; // Marcar como vinculado para no seguir buscando
+                                 $isLinked = true;
+                             }
                          }
                          // 2. Coincidencia por Fecha (Si no hay email o no coincide, pero la fecha es válida para este cliente)
                          elseif ($fechaEnvio && $submissionTime->greaterThan($fechaEnvio)) {

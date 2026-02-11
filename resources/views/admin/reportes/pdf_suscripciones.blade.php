@@ -253,17 +253,19 @@
     <div class="kpi-grid" style="margin-top: 10px;">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-label">Gasto Mensual</div>
-                <div class="kpi-value">${{ number_format($totalGastoMensual, 2) }}</div>
+                <div class="kpi-label">Gasto Mensual Real</div>
+                <div class="kpi-value">${{ number_format($gastoMensualReal, 0) }}</div>
+                <div class="kpi-subtext">Lo que pagas cada mes</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">Gasto Anual</div>
-                <div class="kpi-value">${{ number_format($totalGastoAnual, 2) }}</div>
+                <div class="kpi-label">Vencen en 30 días</div>
+                <div class="kpi-value" style="color: #f59e0b;">{{ $vencenEn30Dias }}</div>
+                <div class="kpi-subtext">Requieren atención</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">A Optimizar</div>
-                <div class="kpi-value" style="color: #f59e0b;">{{ $aOptimizar }}</div>
-                <div class="kpi-subtext">Bajo uso / Alto costo</div>
+                <div class="kpi-label">Renovar Esta Semana</div>
+                <div class="kpi-value" style="color: #ef4444;">{{ $vencenEn7Dias }}</div>
+                <div class="kpi-subtext">Vencen en 7 días o menos</div>
             </div>
         </div>
     </div>

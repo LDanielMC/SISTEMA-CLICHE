@@ -352,7 +352,7 @@
                         <div class="mini-label">Cliente</div>
                         <div class="client-name">{{ $cotizacion->cliente->nombre }} {{ $cotizacion->cliente->apellido_paterno }}</div>
                         <div class="client-details">{{ $cotizacion->cliente->empresa }}</div>
-                        <div class="client-details">{{ $cotizacion->cliente->correo }}</div>
+                        <div class="client-details">{{ $cotizacion->cliente->user->email }}</div>
                     </td>
 
                     <td class="top-right">
