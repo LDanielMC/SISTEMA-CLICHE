@@ -7,7 +7,7 @@
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            
+
             {{-- BARRA DE HERRAMIENTAS --}}
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 
@@ -50,6 +50,30 @@
                     </a>
                 </div>
             </div>
+
+            {{-- Mensaje de éxito (correo enviado) --}}
+            @if (request()->get('mail_ok'))
+                <div id="mail-success-msg" style="margin-bottom: 1rem; padding: 14px 20px; border-radius: 10px; background-color: #059669; color: #fff; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: opacity 0.3s;">
+                    <svg style="width:24px; height:24px; flex-shrink:0;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span style="flex:1;">{{ request()->get('mail_ok') }}</span>
+                    <button onclick="document.getElementById('mail-success-msg').style.display='none'" style="background:none; border:none; color:#a7f3d0; cursor:pointer; font-size:20px; line-height:1; padding:0 4px;">&times;</button>
+                </div>
+                <script>setTimeout(function(){ var el = document.getElementById('mail-success-msg'); if(el) el.style.display='none'; }, 6000);</script>
+            @endif
+
+            {{-- Mensaje de error (correo) --}}
+            @if (request()->get('mail_error'))
+                <div id="mail-error-msg" style="margin-bottom: 1rem; padding: 14px 20px; border-radius: 10px; background-color: #dc2626; color: #fff; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: opacity 0.3s;">
+                    <svg style="width:24px; height:24px; flex-shrink:0;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span style="flex:1;">{{ request()->get('mail_error') }}</span>
+                    <button onclick="document.getElementById('mail-error-msg').style.display='none'" style="background:none; border:none; color:#fca5a5; cursor:pointer; font-size:20px; line-height:1; padding:0 4px;">&times;</button>
+                </div>
+                <script>setTimeout(function(){ var el = document.getElementById('mail-error-msg'); if(el) el.style.display='none'; }, 8000);</script>
+            @endif
 
             {{-- CONTENEDOR DE LA TABLA --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

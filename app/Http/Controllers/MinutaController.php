@@ -18,8 +18,14 @@ class MinutaController extends Controller
 
         $query = Minuta::with('cliente');
 
-        if ($estatusFilter !== 'todas') {
-            // Filtrar por estatus de acuerdos relacionados
+        if ($estatusFilter === 'completado') {
+            // Para completadas: Que tenga acuerdos Y que NO tenga pendientes
+            $query->whereHas('acuerdos')
+                  ->whereDoesntHave('acuerdos', function($q) {
+                      $q->where('estatus', 'pendiente');
+                  });
+        } elseif ($estatusFilter !== 'todas') {
+            // Para pendientes: Que tenga al menos un acuerdo con ese estatus
             $query->whereHas('acuerdos', function($q) use ($estatusFilter) {
                 $q->where('estatus', $estatusFilter);
             });
@@ -199,7 +205,12 @@ class MinutaController extends Controller
         $sql = Minuta::with('cliente');
 
         // Filtro por estatus de acuerdos
-        if ($estatus !== 'todas') {
+        if ($estatus === 'completado') {
+            $sql->whereHas('acuerdos')
+                ->whereDoesntHave('acuerdos', function($q) {
+                    $q->where('estatus', 'pendiente');
+                });
+        } elseif ($estatus !== 'todas') {
             $sql->whereHas('acuerdos', function($q) use ($estatus) {
                 $q->where('estatus', $estatus);
             });

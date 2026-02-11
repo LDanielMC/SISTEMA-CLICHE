@@ -93,7 +93,7 @@
                             {{-- Notar que el name es 'correo_contacto' como en tu controlador --}}
                             <input type="email" 
                                    name="correo_contacto"
-                                   value="{{ old('correo_contacto', $empleado->user->email ?? '') }}"
+                                   value="{{ $errors->has('correo_contacto') ? ($empleado->user->email ?? '') : old('correo_contacto', $empleado->user->email ?? '') }}"
                                    :readonly="emailLocked"
                                    :class="emailLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'"
                                    class="block w-full border-gray-300 rounded-md pr-10 focus:ring-indigo-500 focus:border-indigo-500"
@@ -128,20 +128,30 @@
                                name="telefono" 
                                value="{{ old('telefono', $empleado->telefono) }}"
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                               inputmode="numeric" maxlength="10" pattern="[0-9]{10}"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                               placeholder="10 dígitos"
                                required>
                         @error('telefono')
                             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    {{-- Puesto --}}
+                    {{-- Puesto (con autocompletado) --}}
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Puesto</label>
                         <input type="text" 
                                name="puesto" 
                                value="{{ old('puesto', $empleado->puesto) }}"
+                               list="lista-puestos"
+                               placeholder="Escribe o selecciona un puesto..."
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                required>
+                        <datalist id="lista-puestos">
+                            @foreach($puestos as $puesto)
+                                <option value="{{ $puesto }}">
+                            @endforeach
+                        </datalist>
                         @error('puesto')
                             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror

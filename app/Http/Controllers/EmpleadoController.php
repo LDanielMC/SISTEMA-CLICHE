@@ -48,7 +48,15 @@ class EmpleadoController extends Controller
         // Usuarios que tienen rol empleado
         $usuarios = User::where('rol', 'empleado')->get();
 
-        return view('empleados.create', compact('usuarios'));
+        // Obtener puestos únicos existentes para autocompletado
+        $puestos = Empleado::whereNotNull('puesto')
+            ->where('puesto', '!=', '')
+            ->distinct()
+            ->pluck('puesto')
+            ->sort()
+            ->values();
+
+        return view('empleados.create', compact('usuarios', 'puestos'));
     }
 
     public function store(Request $request)
@@ -58,9 +66,12 @@ class EmpleadoController extends Controller
             'apellido_paterno'  => 'required|string|max:120',
             'apellido_materno'  => 'nullable|string|max:120',
             'correo_contacto'   => 'required|email|max:255|unique:users,email',
-            'telefono'          => 'required|string|max:30',
+            'telefono'          => 'required|regex:/^[0-9]{10}$/',
             'puesto'            => 'required|string|max:120',
             'fecha_ingreso'     => 'required|date',
+        ], [
+            'correo_contacto.unique' => 'Ya existe un usuario registrado con este correo electrónico.',
+            'telefono.regex' => 'El teléfono debe contener exactamente 10 dígitos numéricos.',
         ]);
 
         // 1) Crear el usuario asociado al empleado
@@ -94,9 +105,15 @@ class EmpleadoController extends Controller
 
     public function edit(Empleado $empleado)
     {
-        // Carga la vista de edición y le pasa el empleado que se quiere modificar.
-        // La vista 'empleados.edit' usará los datos de $empleado para rellenar el formulario.
-        return view('empleados.edit', compact('empleado'));
+        // Obtener puestos únicos existentes para autocompletado
+        $puestos = Empleado::whereNotNull('puesto')
+            ->where('puesto', '!=', '')
+            ->distinct()
+            ->pluck('puesto')
+            ->sort()
+            ->values();
+
+        return view('empleados.edit', compact('empleado', 'puestos'));
     }
 
     public function update(Request $request, Empleado $empleado)
@@ -109,11 +126,14 @@ class EmpleadoController extends Controller
             'nombre'            => 'required|string|max:120',
             'apellido_paterno'  => 'required|string|max:120',
             'apellido_materno'  => 'nullable|string|max:120',
-            'telefono'          => 'required|string|max:30',
+            'telefono'          => 'required|regex:/^[0-9]{10}$/',
             'puesto'            => 'required|string|max:120',
             
             // VALIDACIÓN DE CORREO: Único en users, ignorando a este usuario
             'correo_contacto'   => 'required|email|max:255|unique:users,email,'.$userId,
+        ], [
+            'correo_contacto.unique' => 'Ya existe un usuario registrado con este correo electrónico.',
+            'telefono.regex' => 'El teléfono debe contener exactamente 10 dígitos numéricos.',
         ]);
 
         DB::transaction(function () use ($request, $empleado) {

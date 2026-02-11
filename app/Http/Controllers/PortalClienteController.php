@@ -120,6 +120,12 @@ class PortalClienteController extends Controller
                             if (!$linkedResponseId) {
                                 $respondentEmail = strtolower(trim($response->getRespondentEmail()));
                                 
+                                // FILTRO POR FECHA: Solo contar respuestas POSTERIORES a fecha_envio
+                                // Esto permite que al solicitar "Nueva Respuesta", solo cuenten las nuevas
+                                if ($fechaEnvio && $submissionTime->lessThanOrEqualTo($fechaEnvio)) {
+                                    continue; // Respuesta anterior al envío actual, no cuenta
+                                }
+                                
                                 // EXCLUSIÓN DE SEGURIDAD: 
                                 // Si el email de esta respuesta pertenece explícitamente a otro cliente asignado, IGNORARLA.
                                 if ($respondentEmail && in_array($respondentEmail, $otherClientsEmails)) {
@@ -151,16 +157,10 @@ class PortalClienteController extends Controller
                                     }
                                 }
 
-                                // A. Coincidencia estricta por Email (Metadata o Cuerpo)
+                                // Coincidencia estricta por Email (Metadata o Cuerpo)
+                                // Ya NO hay fallback por fecha - solo email
                                 if (($userEmail && $respondentEmail === strtolower(trim($userEmail))) || $foundEmailInBody) {
                                     $hasNewResponse = true;
-                                    break;
-                                }
-
-                                // B. Coincidencia por Fecha (Fallback)
-                                // Solo si NO es de otro (ya filtrado arriba por email metadata)
-                                if (!$fechaEnvio || $submissionTime->greaterThan($fechaEnvio)) {
-                                    $hasNewResponse = true; 
                                     break;
                                 }
                             }

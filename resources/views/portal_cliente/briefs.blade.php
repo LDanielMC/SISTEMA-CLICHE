@@ -29,7 +29,7 @@
                                             <h4 class="font-bold text-gray-800">{{ $brief->titulo }}</h4>
                                             <p class="text-sm text-gray-600 mt-1">{{ Str::limit($brief->descripcion, 100) }}</p>
                                             <p class="text-xs text-gray-500 mt-2">
-                                                Enviado el: {{ $brief->fecha_envio ? $brief->fecha_envio->format('d/m/Y') : 'Fecha no disponible' }}
+                                                Enviado el: {{ $brief->pivot->fecha_envio ? \Carbon\Carbon::parse($brief->pivot->fecha_envio)->format('d/m/Y') : 'Fecha no disponible' }}
                                             </p>
                                         </div>
                                         <div class="mt-4 md:mt-0">

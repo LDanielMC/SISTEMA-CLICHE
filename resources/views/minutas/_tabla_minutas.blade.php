@@ -14,17 +14,14 @@
             if ($todosCompletados) {
                 $borde = 'border-emerald-500';
                 $badge = 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-600/20';
-                $badgeText = 'completados';
                 $fondoTarjeta = 'background: linear-gradient(135deg, #dbeafe 0%, #cffafe 40%, #ccfbf1 70%, #fce7f3 100%);';
             } elseif ($acuerdosPendientes > 0) {
                 $borde = 'border-yellow-400';
                 $badge = 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-600/20';
-                $badgeText = 'pendientes';
                 $fondoTarjeta = '';
             } else {
                 $borde = 'border-gray-300';
                 $badge = 'bg-gray-100 text-gray-800 ring-1 ring-gray-600/20';
-                $badgeText = 'sin acuerdos';
                 $fondoTarjeta = '';
             }
         @endphp
@@ -44,7 +41,13 @@
                         Minuta #{{ str_pad($minuta->id_minuta, 5, '0', STR_PAD_LEFT) }}
                     </span>
                     <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase {{ $badge }}">
-                        {{ $acuerdosPendientes }} pendientes
+                        @if ($todosCompletados)
+                            Completada
+                        @elseif ($acuerdosPendientes > 0)
+                            {{ $acuerdosPendientes }} {{ Str::plural('pendiente', $acuerdosPendientes) }}
+                        @else
+                            Sin acuerdos
+                        @endif
                     </span>
                 </div>
 

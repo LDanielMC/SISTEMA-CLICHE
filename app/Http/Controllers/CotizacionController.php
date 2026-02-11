@@ -7,7 +7,9 @@ use App\Models\CotizacionDetalle;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf; // Asegúrate de tener instalado barryvdh/laravel-dompdf
+use App\Mail\CotizacionPdf;
 
 class CotizacionController extends Controller
 {
@@ -17,7 +19,7 @@ class CotizacionController extends Controller
         $sortBy = $request->query('sort_by', 'fecha');
         $sortDir = $request->query('sort_dir', 'desc');
 
-        $query = Cotizacion::with('cliente');
+        $query = Cotizacion::with('cliente.user');
 
         if ($estatusFilter !== 'todas') {
             $query->where('estatus', $estatusFilter);
@@ -39,21 +41,52 @@ class CotizacionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'titulo_cotizacion' => 'required|string|max:200',
-            'id_cliente'        => 'required|exists:clientes,id_cliente',
-            'fecha'             => 'required|date',
-            'vencimiento_dias'  => 'required|integer|min:1',
-            'texto_introduccion'=> 'nullable|string|max:1000',
-            'estatus'           => 'required|in:pendiente,aceptada,rechazada',
-            'porcentaje_isr'    => 'nullable|numeric|min:0|max:100', // Campo validado
+            'titulo_cotizacion'      => 'required|string|max:200',
+            'id_cliente'             => 'required|exists:clientes,id_cliente',
+            'fecha'                  => 'required|date',
+            'vencimiento_dias'       => 'required|integer|min:1',
+            'texto_introduccion'     => 'nullable|string|max:1000',
+            'estatus'                => 'required|in:pendiente,aceptada,rechazada',
+            'porcentaje_isr'         => 'nullable|numeric|min:0|max:100',
             
-            'partidas'               => 'required|array|min:1',
-            'partidas.*.titulo'      => 'required|string|max:100',
-            'partidas.*.cantidad'    => 'required|numeric|min:0.01',
-            'partidas.*.descripcion' => 'required|string|max:400',
+            'partidas'                   => 'required|array|min:1',
+            'partidas.*.titulo'          => 'required|string|max:100',
+            'partidas.*.cantidad'        => 'required|numeric|min:0.01',
+            'partidas.*.descripcion'     => 'required|string|max:400',
             'partidas.*.precio_unitario' => 'required|numeric|min:0',
-            'partidas.*.iva'         => 'required|numeric|min:0',
+            'partidas.*.iva'             => 'required|numeric|min:0',
+        ], [
+            'titulo_cotizacion.required' => 'El título de la cotización es obligatorio.',
+            'titulo_cotizacion.max'      => 'El título no debe exceder 200 caracteres.',
+            'id_cliente.required'        => 'Debes seleccionar un cliente.',
+            'id_cliente.exists'          => 'El cliente seleccionado no es válido.',
+            'fecha.required'             => 'La fecha de emisión es obligatoria.',
+            'fecha.date'                 => 'La fecha de emisión no es válida.',
+            'vencimiento_dias.required'  => 'Los días de vencimiento son obligatorios.',
+            'vencimiento_dias.integer'   => 'Los días de vencimiento deben ser un número entero.',
+            'vencimiento_dias.min'       => 'Los días de vencimiento deben ser al menos 1.',
+            'estatus.required'           => 'El estatus es obligatorio.',
+            'estatus.in'                 => 'El estatus seleccionado no es válido.',
+            'porcentaje_isr.numeric'     => 'El porcentaje de ISR debe ser un número.',
+            'porcentaje_isr.min'         => 'El porcentaje de ISR no puede ser negativo.',
+            'porcentaje_isr.max'         => 'El porcentaje de ISR no puede ser mayor a 100.',
+            'partidas.required'              => 'Debes agregar al menos una partida.',
+            'partidas.min'                   => 'Debes agregar al menos una partida.',
+            'partidas.*.titulo.required'     => 'El título de la partida #:position es obligatorio.',
+            'partidas.*.cantidad.required'   => 'La cantidad de la partida #:position es obligatoria.',
+            'partidas.*.cantidad.min'        => 'La cantidad de la partida #:position debe ser mayor a 0.',
+            'partidas.*.descripcion.required'=> 'La descripción de la partida #:position es obligatoria.',
+            'partidas.*.precio_unitario.required' => 'El precio unitario de la partida #:position es obligatorio.',
+            'partidas.*.precio_unitario.min'      => 'El precio unitario de la partida #:position no puede ser negativo.',
+            'partidas.*.iva.required'        => 'El IVA de la partida #:position es obligatorio.',
+            'partidas.*.iva.min'             => 'El IVA de la partida #:position no puede ser negativo.',
         ]);
+
+        // Validar títulos duplicados en partidas
+        $titulos = collect($request->input('partidas'))->pluck('titulo')->map(fn($t) => mb_strtolower(trim($t)))->filter();
+        if ($titulos->count() !== $titulos->unique()->count()) {
+            return back()->withInput()->withErrors(['partidas' => 'Hay títulos de servicio duplicados en las partidas. Cada concepto debe tener un título único.']);
+        }
 
         DB::transaction(function () use ($request) {
             
@@ -137,22 +170,53 @@ class CotizacionController extends Controller
     public function update(Request $request, Cotizacion $cotizacion)
     {
         $request->validate([
-            'titulo_cotizacion' => 'required|string|max:200',
-            'id_cliente'        => 'required|exists:clientes,id_cliente',
-            'fecha'             => 'required|date',
-            'vencimiento_dias'  => 'required|integer|min:1',
-            'texto_introduccion'=> 'nullable|string|max:1000',
-            'estatus'           => 'required|in:pendiente,aceptada,rechazada',
-            'porcentaje_isr'    => 'nullable|numeric|min:0|max:100',
+            'titulo_cotizacion'      => 'required|string|max:200',
+            'id_cliente'             => 'required|exists:clientes,id_cliente',
+            'fecha'                  => 'required|date',
+            'vencimiento_dias'       => 'required|integer|min:1',
+            'texto_introduccion'     => 'nullable|string|max:1000',
+            'estatus'                => 'required|in:pendiente,aceptada,rechazada',
+            'porcentaje_isr'         => 'nullable|numeric|min:0|max:100',
 
-            'partidas'                  => 'required|array|min:1',
-            'partidas.*.id_detalle'     => 'nullable|integer',
-            'partidas.*.titulo'         => 'required|string|max:100',
-            'partidas.*.descripcion'    => 'nullable|string|max:400',
-            'partidas.*.cantidad'       => 'required|numeric|min:0.01',
-            'partidas.*.precio_unitario'=> 'required|numeric|min:0',
-            'partidas.*.iva'            => 'nullable|numeric|min:0',
+            'partidas'                   => 'required|array|min:1',
+            'partidas.*.id_detalle'      => 'nullable|integer',
+            'partidas.*.titulo'          => 'required|string|max:100',
+            'partidas.*.descripcion'     => 'required|string|max:400',
+            'partidas.*.cantidad'        => 'required|numeric|min:0.01',
+            'partidas.*.precio_unitario' => 'required|numeric|min:0',
+            'partidas.*.iva'             => 'required|numeric|min:0',
+        ], [
+            'titulo_cotizacion.required' => 'El título de la cotización es obligatorio.',
+            'titulo_cotizacion.max'      => 'El título no debe exceder 200 caracteres.',
+            'id_cliente.required'        => 'Debes seleccionar un cliente.',
+            'id_cliente.exists'          => 'El cliente seleccionado no es válido.',
+            'fecha.required'             => 'La fecha de emisión es obligatoria.',
+            'fecha.date'                 => 'La fecha de emisión no es válida.',
+            'vencimiento_dias.required'  => 'Los días de vencimiento son obligatorios.',
+            'vencimiento_dias.integer'   => 'Los días de vencimiento deben ser un número entero.',
+            'vencimiento_dias.min'       => 'Los días de vencimiento deben ser al menos 1.',
+            'estatus.required'           => 'El estatus es obligatorio.',
+            'estatus.in'                 => 'El estatus seleccionado no es válido.',
+            'porcentaje_isr.numeric'     => 'El porcentaje de ISR debe ser un número.',
+            'porcentaje_isr.min'         => 'El porcentaje de ISR no puede ser negativo.',
+            'porcentaje_isr.max'         => 'El porcentaje de ISR no puede ser mayor a 100.',
+            'partidas.required'              => 'Debes agregar al menos una partida.',
+            'partidas.min'                   => 'Debes agregar al menos una partida.',
+            'partidas.*.titulo.required'     => 'El título de la partida #:position es obligatorio.',
+            'partidas.*.cantidad.required'   => 'La cantidad de la partida #:position es obligatoria.',
+            'partidas.*.cantidad.min'        => 'La cantidad de la partida #:position debe ser mayor a 0.',
+            'partidas.*.descripcion.required'=> 'La descripción de la partida #:position es obligatoria.',
+            'partidas.*.precio_unitario.required' => 'El precio unitario de la partida #:position es obligatorio.',
+            'partidas.*.precio_unitario.min'      => 'El precio unitario de la partida #:position no puede ser negativo.',
+            'partidas.*.iva.required'        => 'El IVA de la partida #:position es obligatorio.',
+            'partidas.*.iva.min'             => 'El IVA de la partida #:position no puede ser negativo.',
         ]);
+
+        // Validar títulos duplicados en partidas
+        $titulos = collect($request->input('partidas'))->pluck('titulo')->map(fn($t) => mb_strtolower(trim($t)))->filter();
+        if ($titulos->count() !== $titulos->unique()->count()) {
+            return back()->withInput()->withErrors(['partidas' => 'Hay títulos de servicio duplicados en las partidas. Cada concepto debe tener un título único.']);
+        }
 
         DB::transaction(function () use ($request, $cotizacion) {
 
@@ -252,7 +316,7 @@ class CotizacionController extends Controller
         $queryText = $request->get('query');
         $estatus   = $request->get('estatus', 'todas');
 
-        $sql = Cotizacion::with('cliente');
+        $sql = Cotizacion::with('cliente.user');
 
         if ($estatus !== 'todas') {
             $sql->where('estatus', $estatus);
@@ -283,7 +347,7 @@ class CotizacionController extends Controller
     {
         // Cargamos los datos necesarios.
         // IMPORTANTE: Ordenamos los detalles por 'orden' ascendente para que salgan igual que en la vista de edición.
-        $cotizacion->load(['cliente', 'detalles' => function($q) {
+        $cotizacion->load(['cliente.user', 'detalles' => function($q) {
             $q->orderBy('orden', 'asc');
         }]);
 
@@ -295,5 +359,34 @@ class CotizacionController extends Controller
 
         // 'stream' muestra el PDF en el navegador. Si prefieres que se descargue directo, usa 'download'.
         return $pdf->stream('Cotizacion-' . str_pad($cotizacion->id_cotizacion, 5, '0', STR_PAD_LEFT) . '.pdf');
+    }
+
+    // Enviar PDF de cotización al correo del cliente
+    public function sendPdf(Cotizacion $cotizacion)
+    {
+        $cotizacion->load(['cliente.user', 'detalles' => function($q) {
+            $q->orderBy('orden', 'asc');
+        }]);
+
+        $correoCliente = $cotizacion->cliente->user->email ?? null;
+
+        if (empty($correoCliente)) {
+            return redirect()->route('cotizaciones.index', ['mail_error' => 'El cliente no tiene un correo electrónico registrado.']);
+        }
+
+        try {
+            // Generar el PDF en memoria
+            $pdf = Pdf::loadView('cotizaciones.pdf', compact('cotizacion'));
+            $pdf->setPaper('A4', 'portrait');
+            $pdfContent = $pdf->output();
+
+            // Enviar el correo con el PDF adjunto
+            Mail::to($correoCliente)->send(new CotizacionPdf($cotizacion, $pdfContent));
+
+            $folio = str_pad($cotizacion->id_cotizacion, 5, '0', STR_PAD_LEFT);
+            return redirect()->route('cotizaciones.index', ['mail_ok' => "Cotización #{$folio} enviada correctamente a {$correoCliente}."]);
+        } catch (\Exception $e) {
+            return redirect()->route('cotizaciones.index', ['mail_error' => 'Error al enviar el correo: ' . $e->getMessage()]);
+        }
     }
 }

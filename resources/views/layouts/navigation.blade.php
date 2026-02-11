@@ -71,7 +71,7 @@
                         <div class="relative sm:flex sm:items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
-                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ (request()->routeIs('clientes.*') || request()->routeIs('cotizaciones.*') || request()->routeIs('calendario.general') || request()->routeIs('minutas.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
+                                    <button class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition focus:outline-none {{ (request()->routeIs('clientes.*') || request()->routeIs('cotizaciones.*') || request()->routeIs('calendario.general') || request()->routeIs('minutas.*') || request()->routeIs('briefs.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
                                         <div>{{ __('Clientes') }}</div>
                                         <div class="ms-1">
                                             <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -94,6 +94,9 @@
                                     <x-dropdown-link :href="route('minutas.index')">
                                         {{ __('Minutas') }}
                                     </x-dropdown-link>
+                                    <x-dropdown-link :href="route('briefs.index')">
+                                        📋 {{ __('Briefs') }}
+                                    </x-dropdown-link>
                                 </x-slot>
                             </x-dropdown>
                         </div>
@@ -104,14 +107,6 @@
                             class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
                                    {{ (request()->routeIs('suscripciones.*') || request()->routeIs('categorias-suscripcion.*')) ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
                             {{ __('Suscripciones') }}
-                        </x-nav-link>
-
-                        <x-nav-link
-                            :href="route('briefs.index')"
-                            :active="request()->routeIs('briefs.*')"
-                            class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-[#0149a8] hover:bg-white/60 transition
-                                   {{ request()->routeIs('briefs.*') ? 'bg-white/70 text-[#0149a8] shadow-sm border border-blue-100' : '' }}">
-                            📋 {{ __('Briefs') }}
                         </x-nav-link>
 
                         <x-nav-link

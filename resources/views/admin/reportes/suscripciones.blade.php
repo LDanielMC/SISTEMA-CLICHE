@@ -33,6 +33,18 @@
 
         <!-- Tarjetas de Resumen - KPIs Clave -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            <!-- Gasto Mensual Real -->
+            <div class="bg-gradient-to-br from-green-500 to-green-600 overflow-hidden shadow-lg sm:rounded-lg p-5 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-medium uppercase opacity-90">Gasto Mensual</div>
+                        <div class="mt-2 text-2xl font-bold">${{ number_format($gastoMensualReal, 0) }}</div>
+                    </div>
+                    <div class="text-3xl opacity-80">📅</div>
+                </div>
+                <div class="text-xs opacity-75 mt-1">Lo que pagas cada mes</div>
+            </div>
+
             <!-- Proyección Anual -->
             <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 overflow-hidden shadow-lg sm:rounded-lg p-5 text-white">
                 <div class="flex items-center justify-between">
@@ -42,6 +54,7 @@
                     </div>
                     <div class="text-3xl opacity-80">📊</div>
                 </div>
+                <div class="text-xs opacity-75 mt-1">Total en 12 meses</div>
             </div>
             
             <!-- Total Suscripciones -->
@@ -59,45 +72,36 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 {{ $vencenEn7Dias > 0 ? 'border-red-500' : 'border-green-500' }}">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium uppercase text-gray-500">Crítico (7 días)</div>
+                        <div class="text-xs font-medium uppercase text-gray-500">Renovar Esta Semana</div>
                         <div class="mt-2 text-2xl font-bold {{ $vencenEn7Dias > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $vencenEn7Dias }}</div>
                     </div>
-                    <div class="text-3xl">{{ $vencenEn7Dias > 0 ? '⚠️' : '✅' }}</div>
+                    <div class="text-3xl">{{ $vencenEn7Dias > 0 ? '🔴' : '✅' }}</div>
                 </div>
+                <div class="text-xs text-gray-400 mt-1">Vencen en 7 días o menos</div>
             </div>
 
             <!-- Por Vencer (30 días) -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 {{ $vencenEn30Dias > 0 ? 'border-yellow-500' : 'border-green-500' }}">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium uppercase text-gray-500">Por Vencer (30d)</div>
+                        <div class="text-xs font-medium uppercase text-gray-500">Renovar Este Mes</div>
                         <div class="mt-2 text-2xl font-bold {{ $vencenEn30Dias > 0 ? 'text-yellow-600' : 'text-green-600' }}">{{ $vencenEn30Dias }}</div>
                     </div>
-                    <div class="text-3xl">🔔</div>
+                    <div class="text-3xl">🟡</div>
                 </div>
+                <div class="text-xs text-gray-400 mt-1">Vencen en 30 días o menos</div>
             </div>
 
-            <!-- A Optimizar -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 {{ $aOptimizar > 0 ? 'border-orange-500' : 'border-gray-300' }}">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="text-xs font-medium uppercase text-gray-500">A Optimizar</div>
-                        <div class="mt-2 text-2xl font-bold {{ $aOptimizar > 0 ? 'text-orange-600' : 'text-gray-600' }}">{{ $aOptimizar }}</div>
-                    </div>
-                    <div class="text-3xl">💡</div>
-                </div>
-                <div class="text-xs text-gray-400 mt-1">Bajo uso, costo alto</div>
-            </div>
-
-            <!-- Promedio Costo -->
+            <!-- Promedio Costo Mensual -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 border-purple-500">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium uppercase text-gray-500">Costo Promedio</div>
+                        <div class="text-xs font-medium uppercase text-gray-500">Promedio/Mes</div>
                         <div class="mt-2 text-2xl font-bold text-gray-900">${{ number_format($promedioCosto, 0) }}</div>
                     </div>
                     <div class="text-3xl">💰</div>
                 </div>
+                <div class="text-xs text-gray-400 mt-1">Por suscripción</div>
             </div>
         </div>
 

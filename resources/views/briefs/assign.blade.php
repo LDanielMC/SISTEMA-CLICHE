@@ -121,6 +121,17 @@
                                                                 </svg>
                                                                 Ver Respuesta
                                                             </a>
+                                                            @if($cliente->pivot->estado == 'recibido')
+                                                                <form action="{{ route('briefs.request_new_response', [$brief->id, $cliente->id_cliente]) }}" method="POST" onsubmit="return confirm('¿Solicitar una nueva respuesta? Esto reiniciará el estado a pendiente y enviará una notificación al cliente.');">
+                                                                    @csrf
+                                                                    <button type="submit" class="text-orange-600 hover:text-orange-800 border-l pl-4 border-gray-300 flex items-center gap-1">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                                        </svg>
+                                                                        Nueva Respuesta
+                                                                    </button>
+                                                                </form>
+                                                            @endif
                                                             <form action="{{ route('briefs.unassign', [$brief->id, $cliente->id_cliente]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de quitar la asignación? Esto no borra las respuestas en Google, pero dejará de mostrarse en el portal del cliente.');">
                                                                 @csrf
                                                                 @method('DELETE')

@@ -62,12 +62,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('clientes', ClienteController::class)->except(['show']);
     Route::get('/clientes/search', [ClienteController::class, 'search'])->name('clientes.search');
     Route::patch('/clientes/{cliente}/reactivar', [ClienteController::class, 'reactivar'])->name('clientes.reactivar');
-    Route::delete('/clientes/{cliente}/borrar-fiscal', [ClienteController::class, 'destroyFiscal'])->name('clientes.destroyFiscal');
     Route::post('/verificar-password', [ClienteController::class, 'verificarPassword'])->name('password.verify');
 
     // COTIZACIONES
     Route::get('/cotizaciones/search', [CotizacionController::class, 'search'])->name('cotizaciones.search');
     Route::get('/cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'pdf'])->name('cotizaciones.pdf');
+    Route::post('/cotizaciones/{cotizacion}/send-pdf', [CotizacionController::class, 'sendPdf'])->name('cotizaciones.sendPdf');
     Route::resource('cotizaciones', CotizacionController::class)->parameters(['cotizaciones' => 'cotizacion']);
 
     // MINUTAS
@@ -131,6 +131,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/briefs/{brief}/asignar', [\App\Http\Controllers\BriefController::class, 'assign'])->name('briefs.assign');
     Route::post('/briefs/{brief}/asignar', [\App\Http\Controllers\BriefController::class, 'storeAssignment'])->name('briefs.storeAssignment');
     Route::delete('/briefs/{brief}/asignar/{cliente}', [\App\Http\Controllers\BriefController::class, 'unassign'])->name('briefs.unassign');
+    Route::post('/briefs/{brief}/nueva-respuesta/{cliente}', [\App\Http\Controllers\BriefController::class, 'requestNewResponse'])->name('briefs.request_new_response');
     Route::get('/briefs/{brief}/respuestas/{cliente}', [\App\Http\Controllers\BriefController::class, 'showClientResponse'])->name('briefs.client_response');
     Route::post('/briefs/{brief}/respuestas/{cliente}/link', [\App\Http\Controllers\BriefController::class, 'linkResponse'])->name('briefs.link_response');
     Route::delete('/briefs/{brief}/respuestas/{cliente}/unlink', [\App\Http\Controllers\BriefController::class, 'unlinkResponse'])->name('briefs.unlink_response');
