@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CategoriaSuscripcionRequest extends FormRequest
 {
@@ -21,8 +22,16 @@ class CategoriaSuscripcionRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Obtener el ID de la categoría si estamos editando
+        $categoriaId = $this->route('categorias_suscripcion');
+        
         return [
-            'nombre' => 'required|string|max:100',
+            'nombre' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('categorias_suscripcion', 'nombre')->ignore($categoriaId),
+            ],
             'estatus' => 'required|in:activo,inactivo',
         ];
     }
@@ -32,6 +41,7 @@ class CategoriaSuscripcionRequest extends FormRequest
         return [
             'nombre.required' => 'El nombre de la categoría es obligatorio.',
             'nombre.max' => 'El nombre no puede exceder 100 caracteres.',
+            'nombre.unique' => 'Ya existe una categoría de suscripción con este nombre.',
             'estatus.required' => 'El estatus es obligatorio.',
             'estatus.in' => 'El estatus debe ser activo o inactivo.',
         ];

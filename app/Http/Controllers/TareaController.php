@@ -6,6 +6,7 @@ use App\Models\Tarea;
 use App\Models\Cliente;
 use App\Models\Categoria;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TareaController extends Controller
 {
@@ -31,7 +32,14 @@ class TareaController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'titulo' => 'required|string|max:200',
+            'titulo' => [
+                'required',
+                'string',
+                'max:200',
+                Rule::unique('tareas')->where(function ($query) use ($request) {
+                    return $query->where('cliente_id', $request->cliente_id);
+                }),
+            ],
             'cliente_id' => 'required|exists:clientes,id_cliente',
             'categoria_id' => 'required|exists:categorias,id',
             'descripcion' => 'required|string',
@@ -39,6 +47,7 @@ class TareaController extends Controller
         ], [
             'titulo.required' => 'El título es obligatorio.',
             'titulo.max' => 'El título no puede exceder 200 caracteres.',
+            'titulo.unique' => 'Ya existe una tarea con este título para el cliente seleccionado.',
             'cliente_id.required' => 'Debe seleccionar un cliente.',
             'cliente_id.exists' => 'El cliente seleccionado no existe.',
             'categoria_id.required' => 'Debe seleccionar una categoría.',
@@ -59,7 +68,14 @@ class TareaController extends Controller
     public function update(Request $request, Tarea $tarea)
     {
         $validated = $request->validate([
-            'titulo' => 'required|string|max:200',
+            'titulo' => [
+                'required',
+                'string',
+                'max:200',
+                Rule::unique('tareas')->where(function ($query) use ($request) {
+                    return $query->where('cliente_id', $request->cliente_id);
+                })->ignore($tarea->id),
+            ],
             'cliente_id' => 'required|exists:clientes,id_cliente',
             'categoria_id' => 'required|exists:categorias,id',
             'descripcion' => 'required|string',
@@ -67,6 +83,7 @@ class TareaController extends Controller
         ], [
             'titulo.required' => 'El título es obligatorio.',
             'titulo.max' => 'El título no puede exceder 200 caracteres.',
+            'titulo.unique' => 'Ya existe otra tarea con este título para el cliente seleccionado.',
             'cliente_id.required' => 'Debe seleccionar un cliente.',
             'cliente_id.exists' => 'El cliente seleccionado no existe.',
             'categoria_id.required' => 'Debe seleccionar una categoría.',

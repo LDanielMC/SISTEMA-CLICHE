@@ -14,10 +14,22 @@
                 ⚠️ Vencida
             </span>
         @endif
+        @if($asignacion->estado_empleado === 'terminada' && $asignacion->fecha_entrega && $asignacion->fecha_limite && $asignacion->fecha_entrega->gt($asignacion->fecha_limite))
+            <span class="px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800">
+                🕐 Entregada con retraso
+            </span>
+        @endif
     </div>
 
     {{-- Título de la tarea --}}
     <h4 class="font-bold text-gray-900 mb-2">{{ $asignacion->tarea->titulo }}</h4>
+    
+    {{-- Botón para ver detalles --}}
+    <button type="button" 
+            onclick="openDetallesTareaModal({{ $asignacion->id }})" 
+            class="text-xs text-blue-600 hover:text-blue-800 underline mb-2">
+        ℹ️ Ver detalles completos
+    </button>
 
     {{-- Cliente y Categoría --}}
     <div class="text-xs text-gray-600 mb-2">
@@ -205,9 +217,133 @@
         </div>
     </div>
 
+    {{-- Modal de detalles de tarea --}}
+    <div id="detallesTareaModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full z-[60]">
+        <div class="relative top-20 mx-auto p-6 border w-full max-w-2xl shadow-2xl rounded-xl bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900">📋 Detalles de la tarea</h3>
+                <button onclick="closeDetallesTareaModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="detallesTareaContent" class="space-y-4">
+                {{-- Contenido dinámico cargado por JS --}}
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
     <script>
         let currentAsignacionId = null;
+        
+        // Datos de tareas para el modal (inyectados desde Blade)
+        const tareasData = {
+            @foreach(collect([$asignadas ?? collect(), $enProceso ?? collect(), $terminadas ?? collect()])->flatten()->unique('id') as $a)
+            {{ $a->id }}: {
+                titulo: {!! json_encode($a->tarea->titulo) !!},
+                descripcion: {!! json_encode($a->tarea->descripcion ?? 'Sin descripción') !!},
+                observaciones: {!! json_encode($a->tarea->observaciones ?? 'Sin observaciones') !!},
+                cliente: {!! json_encode($a->tarea->cliente ? ($a->tarea->cliente->empresa ?: $a->tarea->cliente->nombre . ' ' . $a->tarea->cliente->apellido_paterno) : 'Sin cliente') !!},
+                categoria: {!! json_encode($a->tarea->categoria->nombre ?? 'Sin categoría') !!},
+                prioridad: {!! json_encode($a->prioridad_texto) !!},
+                prioridadColor: {!! json_encode($a->prioridad_color) !!},
+                fechaLimite: {!! json_encode($a->fecha_limite->format('d/m/Y')) !!},
+                fechaEntrega: {!! json_encode($a->fecha_entrega ? $a->fecha_entrega->format('d/m/Y H:i') : null) !!},
+                estadoEmpleado: {!! json_encode($a->estado_empleado) !!},
+                estadoAdmin: {!! json_encode($a->estado_admin ?? 'Pendiente') !!},
+                tieneEvidencia: {{ $a->evidencia_path ? 'true' : 'false' }}
+            },
+            @endforeach
+        };
+        
+        function openDetallesTareaModal(asignacionId) {
+            const tarea = tareasData[asignacionId];
+            if (!tarea) {
+                mostrarToast('No se encontraron los detalles de la tarea', 'error');
+                return;
+            }
+            
+            const estadosTexto = {
+                'asignada': 'Asignada',
+                'en_proceso': 'En Proceso',
+                'terminada': 'Terminada'
+            };
+            
+            const estadosAdminTexto = {
+                'pendiente': 'Pendiente de revisión',
+                'completa': 'Completa ✅',
+                'parcialmente_completa': 'Parcialmente completa ⚠️',
+                'incompleta': 'Incompleta ❌',
+                'Pendiente': 'Pendiente de revisión'
+            };
+            
+            document.getElementById('detallesTareaContent').innerHTML = `
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-lg text-gray-900 mb-2">${tarea.titulo}</h4>
+                    <div class="flex gap-2 mb-3">
+                        <span class="px-2 py-1 text-xs font-semibold rounded ${tarea.prioridadColor}">
+                            ${tarea.prioridad}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold mb-1">Cliente</p>
+                        <p class="text-sm text-gray-900">${tarea.cliente}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold mb-1">Categoría</p>
+                        <p class="text-sm text-gray-900">${tarea.categoria}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold mb-1">Fecha límite</p>
+                        <p class="text-sm text-gray-900">${tarea.fechaLimite}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold mb-1">Estado</p>
+                        <p class="text-sm text-gray-900">${estadosTexto[tarea.estadoEmpleado]}</p>
+                    </div>
+                </div>
+                
+                <div class="border-t pt-4">
+                    <p class="text-xs text-gray-500 font-semibold mb-2">Descripción</p>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap">${tarea.descripcion}</p>
+                </div>
+                
+                <div class="border-t pt-4">
+                    <p class="text-xs text-gray-500 font-semibold mb-2">Observaciones</p>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap">${tarea.observaciones}</p>
+                </div>
+                
+                ${tarea.fechaEntrega ? `
+                <div class="border-t pt-4">
+                    <p class="text-xs text-gray-500 font-semibold mb-2">Fecha de entrega</p>
+                    <p class="text-sm text-gray-900">${tarea.fechaEntrega}</p>
+                </div>
+                ` : ''}
+                
+                ${tarea.tieneEvidencia ? `
+                <div class="border-t pt-4">
+                    <p class="text-xs text-gray-500 font-semibold mb-2">Evidencia</p>
+                    <p class="text-sm text-green-600 font-semibold">✅ Evidencia subida</p>
+                </div>
+                ` : ''}
+                
+                <div class="border-t pt-4">
+                    <p class="text-xs text-gray-500 font-semibold mb-2">Evaluación del administrador</p>
+                    <p class="text-sm text-gray-900">${estadosAdminTexto[tarea.estadoAdmin]}</p>
+                </div>
+            `;
+            
+            document.getElementById('detallesTareaModal').classList.remove('hidden');
+        }
+        
+        function closeDetallesTareaModal() {
+            document.getElementById('detallesTareaModal').classList.add('hidden');
+        }
 
         function openEvidenciaModal(asignacionId) {
             currentAsignacionId = asignacionId;
