@@ -25,6 +25,14 @@
         </div>
     @endif
 
+    @if($asignacion->estado_empleado === 'terminada' && $asignacion->fecha_entrega && $asignacion->fecha_limite && $asignacion->fecha_entrega->gt($asignacion->fecha_limite))
+        <div class="mb-2">
+            <span class="px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800">
+                🕐 Entregada con retraso
+            </span>
+        </div>
+    @endif
+
     {{-- Título de la tarea --}}
     <h4 class="font-bold text-gray-900 mb-2">{{ $asignacion->tarea->titulo }}</h4>
 

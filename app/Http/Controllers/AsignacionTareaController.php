@@ -137,6 +137,14 @@ class AsignacionTareaController extends Controller
             'estado_empleado' => 'required|in:asignada,en_proceso,terminada',
         ]);
 
+        // ✅ VALIDACIÓN: No permitir cambiar a 'terminada' sin evidencia
+        if ($validated['estado_empleado'] === 'terminada' && !$asignacion->evidencia_path) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'No puedes marcar la tarea como terminada sin subir la evidencia primero.'
+            ], 422);
+        }
+
         $estadoAnterior = $asignacion->estado_empleado;
         $asignacion->update($validated);
 

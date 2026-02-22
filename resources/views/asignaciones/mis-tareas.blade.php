@@ -277,6 +277,13 @@
                             setTimeout(() => {
                                 draggedElement.classList.remove('inserted');
                             }, 300);
+                        } else if (response.status === 422) {
+                            // Error de validación (sin evidencia)
+                            const data = await response.json();
+                            sourceColumn.appendChild(draggedElement);
+                            draggedElement.style.opacity = '1';
+                            draggedElement.style.pointerEvents = 'auto';
+                            showToast(data.message || '⚠️ Debes subir la evidencia primero', 'error');
                         } else {
                             // Revertir si falla
                             sourceColumn.appendChild(draggedElement);

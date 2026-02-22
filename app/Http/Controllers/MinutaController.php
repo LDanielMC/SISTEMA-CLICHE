@@ -7,9 +7,11 @@ use App\Models\Acuerdo;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Traits\ValidaHTML;
 
 class MinutaController extends Controller
 {
+    use ValidaHTML;
     public function index(Request $request)
     {
         $estatusFilter = $request->query('estatus', 'todas');
@@ -46,13 +48,20 @@ class MinutaController extends Controller
 
     public function store(Request $request)
     {
+        // Limpiar campos HTML antes de validar
+        $request->merge([
+            'asistentes' => $this->limpiarHTML($request->asistentes),
+            'puntos_tratados' => $this->limpiarHTML($request->puntos_tratados),
+            'observaciones' => $this->limpiarHTML($request->observaciones),
+        ]);
+
         // Validar todos los campos con mensajes claros
         $validated = $request->validate([
             'id_cliente'        => 'required|integer|exists:clientes,id_cliente',
-            'titulo'            => 'nullable|string|max:255',
+            'titulo'            => 'required|string|max:255',
             'fecha'             => 'required|date',
-            'asistentes'        => 'nullable|string|max:500',
-            'puntos_tratados'   => 'nullable|string',
+            'asistentes'        => 'required|string|max:500',
+            'puntos_tratados'   => 'required|string',
             'observaciones'     => 'nullable|string',
 
             'acuerdos'                   => 'required|array|min:1',
@@ -61,13 +70,22 @@ class MinutaController extends Controller
             'acuerdos.*.estatus'         => 'required|in:pendiente,completado',
             'acuerdos.*.fecha_limite'    => 'nullable|date',
         ], [
-            'id_cliente.required' => 'El cliente es requerido.',
-            'fecha.required' => 'La fecha es requerida.',
+            'id_cliente.required' => 'El cliente es obligatorio.',
+            'id_cliente.exists' => 'El cliente seleccionado no existe.',
+            'titulo.required' => 'El título de la minuta es obligatorio.',
+            'titulo.max' => 'El título no puede exceder 255 caracteres.',
+            'fecha.required' => 'La fecha de la minuta es obligatoria.',
             'fecha.date' => 'La fecha no es válida.',
+            'asistentes.required' => 'El campo "Asistentes" es obligatorio.',
+            'asistentes.max' => 'El campo "Asistentes" no puede exceder 500 caracteres.',
+            'puntos_tratados.required' => 'El campo "Puntos tratados" es obligatorio.',
             'acuerdos.required' => 'Debes agregar al menos un acuerdo.',
             'acuerdos.min' => 'Debes agregar al menos un acuerdo.',
-            'acuerdos.*.acuerdo.required' => 'El texto del acuerdo es requerido en cada fila.',
-            'acuerdos.*.estatus.required' => 'El estatus es requerido en cada acuerdo.',
+            'acuerdos.*.acuerdo.required' => 'El texto del acuerdo es obligatorio en cada fila.',
+            'acuerdos.*.acuerdo.max' => 'El texto del acuerdo no puede exceder 1000 caracteres.',
+            'acuerdos.*.estatus.required' => 'El estatus es obligatorio en cada acuerdo.',
+            'acuerdos.*.estatus.in' => 'El estatus debe ser "pendiente" o "completado".',
+            'acuerdos.*.fecha_limite.date' => 'La fecha límite del acuerdo no es válida.',
         ]);
 
         try {
@@ -120,12 +138,19 @@ class MinutaController extends Controller
 
     public function update(Request $request, Minuta $minuta)
     {
+        // Limpiar campos HTML antes de validar
+        $request->merge([
+            'asistentes' => $this->limpiarHTML($request->asistentes),
+            'puntos_tratados' => $this->limpiarHTML($request->puntos_tratados),
+            'observaciones' => $this->limpiarHTML($request->observaciones),
+        ]);
+
         $request->validate([
             'id_cliente'        => 'required|exists:clientes,id_cliente',
-            'titulo'            => 'nullable|string|max:255',
+            'titulo'            => 'required|string|max:255',
             'fecha'             => 'required|date',
-            'asistentes'        => 'nullable|string|max:500',
-            'puntos_tratados'   => 'nullable|string|max:5000',
+            'asistentes'        => 'required|string|max:500',
+            'puntos_tratados'   => 'required|string|max:5000',
             'observaciones'     => 'nullable|string|max:5000',
 
             'acuerdos'                   => 'required|array|min:1',
@@ -134,6 +159,24 @@ class MinutaController extends Controller
             'acuerdos.*.responsable'     => 'nullable|string|max:255',
             'acuerdos.*.estatus'         => 'required|in:pendiente,completado',
             'acuerdos.*.fecha_limite'    => 'nullable|date',
+        ], [
+            'id_cliente.required' => 'El cliente es obligatorio.',
+            'id_cliente.exists' => 'El cliente seleccionado no existe.',
+            'titulo.required' => 'El título de la minuta es obligatorio.',
+            'titulo.max' => 'El título no puede exceder 255 caracteres.',
+            'fecha.required' => 'La fecha de la minuta es obligatoria.',
+            'fecha.date' => 'La fecha no es válida.',
+            'asistentes.required' => 'El campo "Asistentes" es obligatorio.',
+            'asistentes.max' => 'El campo "Asistentes" no puede exceder 500 caracteres.',
+            'puntos_tratados.required' => 'El campo "Puntos tratados" es obligatorio.',
+            'puntos_tratados.max' => 'El campo "Puntos tratados" no puede exceder 5000 caracteres.',
+            'acuerdos.required' => 'Debes agregar al menos un acuerdo.',
+            'acuerdos.min' => 'Debes agregar al menos un acuerdo.',
+            'acuerdos.*.acuerdo.required' => 'El texto del acuerdo es obligatorio en cada fila.',
+            'acuerdos.*.acuerdo.max' => 'El texto del acuerdo no puede exceder 1000 caracteres.',
+            'acuerdos.*.estatus.required' => 'El estatus es obligatorio en cada acuerdo.',
+            'acuerdos.*.estatus.in' => 'El estatus debe ser "pendiente" o "completado".',
+            'acuerdos.*.fecha_limite.date' => 'La fecha límite del acuerdo no es válida.',
         ]);
 
         DB::transaction(function () use ($request, $minuta) {
