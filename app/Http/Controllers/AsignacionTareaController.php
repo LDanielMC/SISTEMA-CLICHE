@@ -15,7 +15,8 @@ class AsignacionTareaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = AsignacionTarea::with(['tarea.cliente', 'tarea.categoria', 'empleado']);
+        $query = AsignacionTarea::with(['tarea.cliente', 'tarea.categoria', 'empleado'])
+            ->whereHas('tarea');
 
         if ($request->filled('empleado')) {
             $query->where('empleado_id', $request->empleado);
@@ -216,16 +217,19 @@ class AsignacionTareaController extends Controller
     }
 
 
+    // Sirve el archivo de evidencia (PDF) de una asignación de tarea.
+    // Entrada: $asignacion (AsignacionTarea) - modelo que contiene el path físico
+    // del archivo en disco ($asignacion->evidencia_path), utilizado para validar
+    // su existencia y servirlo al navegador.
     public function verEvidencia(AsignacionTarea $asignacion)
     {
         $user = Auth::user();
 
-        // ✅ Permisos:
-        // - Admin puede ver cualquier evidencia
-        // - Empleado solo puede ver evidencia de sus propias asignaciones
+        // Lógica de permisos:
         if ($user->rol === 'admin') {
-            // OK
+            // Admin tiene acceso total
         } elseif ($user->rol === 'empleado') {
+            // Empleado solo puede ver evidencia de sus propias asignaciones
             if (!$user->empleado || (int)$user->empleado->id_empleado !== (int)$asignacion->empleado_id) {
                 abort(403, 'No autorizado para ver esta evidencia.');
             }
@@ -233,18 +237,19 @@ class AsignacionTareaController extends Controller
             abort(403, 'No autorizado.');
         }
 
-        // ✅ Validar evidencia
+        // Validar evidencia
         if (!$asignacion->evidencia_path) {
             abort(404, 'Esta asignación no tiene evidencia.');
         }
 
-        // OJO: tu evidencia se guarda en disk "public"
+        // verificación en el sistema de archivos (Disk Public)
         if (!Storage::disk('public')->exists($asignacion->evidencia_path)) {
             abort(404, 'No se encontró el archivo de evidencia.');
         }
 
         $fullPath = Storage::disk('public')->path($asignacion->evidencia_path);
 
+        // Retorna el archivo con cabeceras correctas
         return response()->file($fullPath, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="evidencia.pdf"',

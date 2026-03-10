@@ -237,10 +237,10 @@
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4">
                                                 <div class="text-sm font-medium text-gray-900">
-                                                    {{ $asignacion->tarea->titulo }}
+                                                    {{ $asignacion->tarea?->titulo ?? 'Sin tarea' }}
                                                 </div>
                                                 <div class="text-sm text-gray-500">
-                                                    {{ $asignacion->tarea->cliente->empresa ?? $asignacion->tarea->cliente->nombre }}
+                                                    {{ $asignacion->tarea?->cliente?->empresa ?? $asignacion->tarea?->cliente?->nombre ?? '-' }}
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
