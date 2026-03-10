@@ -27,18 +27,29 @@ class CheckBriefStatus extends Command
 
     /**
      * Execute the console command.
+     * 
+     * Verifica el estado de los briefs pendientes, detecta respuestas en Google Forms
+     * mediante coincidencia de emails, y envía recordatorios automáticos cada 5 días.
+     *
+     * @param GoogleFormsService $googleFormsService Servicio inyectado para interactuar con Google Forms API.
+     *                                                Permite obtener las respuestas de los formularios y verificar
+     *                                                si los clientes han completado sus briefs asignados.
+     * @return void
      */
     public function handle(GoogleFormsService $googleFormsService)
     {
         $this->info('Iniciando verificación de estados de Briefs (Relación Muchos a Muchos)...');
 
         // Obtener briefs que tengan al menos un cliente asignado con estado 'pendiente'
-        // Cargamos TODOS los clientes para poder contar correctamente en el fallback por fecha
+        // Se utilizan whereHas para filtrar por la relación de la tabla pivot
         $briefs = Brief::whereHas('clientes', function ($q) {
             $q->where('brief_cliente.estado', 'pendiente');
         })->with(['clientes' => function ($q) {
+            // Cargar los campos pivote necesarios para la lógica posterior
             $q->withPivot('estado', 'fecha_envio', 'fecha_ultimo_recordatorio', 'google_response_id');
         }])->get();
+
+        // ... procesamiento de los briefs obtenidos
 
         $count = 0;
 
