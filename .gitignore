@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Dumps completos de base de datos (pueden contener datos reales / contraseñas)
+/cliche.sql
+/*.sql.bak
+/backups/

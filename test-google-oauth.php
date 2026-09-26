@@ -62,7 +62,7 @@ echo "🎯 Recomendaciones:\n\n";
 if (!file_exists($tokenPath)) {
     echo "1. El token NO existe. Debes autenticar:\n";
     echo "   a) Ve a: http://127.0.0.1:8000/google/auth\n";
-    echo "   b) Autoriza con ivanespinoza0226@gmail.com\n";
+    echo "   b) Autoriza con la cuenta de Google configurada para el calendario\n";
     echo "   c) Vuelve a ejecutar este script\n\n";
 }
 
