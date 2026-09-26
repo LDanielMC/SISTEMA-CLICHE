@@ -78,11 +78,8 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
-    /**
-     * Ensure the login request is not rate limited.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
+// Rate Limiting: máximo 5 intentos fallidos
+
     public function ensureIsNotRateLimited(): void
     {
         if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
@@ -90,7 +87,7 @@ class LoginRequest extends FormRequest
         }
 
         event(new Lockout($this));
-
+        // Lanza excepción con tiempo de espera
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([

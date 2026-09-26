@@ -111,15 +111,37 @@ class BackupController extends Controller
         ]);
 
         $filename = $request->backup_file;
-        
+
+        // Verificación 1: El archivo existe en el servidor
         if (!Storage::disk('local')->exists('backups/' . $filename)) {
-            return redirect()->route('backups.index')->with('error', 'El archivo de respaldo seleccionado no existe.');
+            return redirect()->route('backups.index')
+                ->with('error', '❌ Error de restauración: El archivo "' . $filename . '" no se encontró en el servidor. Es posible que haya sido eliminado previamente.');
+        }
+
+        $path = Storage::disk('local')->path('backups/' . $filename);
+
+        // Verificación 2: El archivo no está vacío
+        if (filesize($path) === 0) {
+            return redirect()->route('backups.index')
+                ->with('error', '❌ Error de restauración: El archivo "' . $filename . '" está vacío. El respaldo puede estar corrupto o haberse interrumpido durante su generación.');
+        }
+
+        // Verificación 3: El archivo parece ser un respaldo SQL válido
+        $handle = fopen($path, 'r');
+        $primeraLinea = fgets($handle);
+        fclose($handle);
+
+        $esSqlValido = str_contains($primeraLinea, '--') ||
+                       str_contains(strtoupper($primeraLinea), 'CREATE') ||
+                       str_contains(strtoupper($primeraLinea), 'SET ') ||
+                       str_contains($primeraLinea, '/*!');
+
+        if (!$esSqlValido) {
+            return redirect()->route('backups.index')
+                ->with('error', '❌ Error de restauración: El archivo "' . $filename . '" no es un respaldo SQL válido. Verifique que el archivo fue generado por este sistema y que no está dañado o es de un formato diferente.');
         }
 
         try {
-            // Usar el disco local para obtener la ruta absoluta correcta del archivo
-            $path = Storage::disk('local')->path('backups/' . $filename);
-            
             $dbHost = config('database.connections.mysql.host');
             $dbPort = config('database.connections.mysql.port');
             $dbName = config('database.connections.mysql.database');
@@ -128,10 +150,10 @@ class BackupController extends Controller
 
             // Ruta completa a mysql en WAMP
             $mysqlPath = env('MYSQL_PATH', 'C:\\wamp64\\bin\\mysql\\mysql9.1.0\\bin\\mysql.exe');
-            
+
             // Usar --execute con source para evitar problemas con redirección en Windows
             $pathForwardSlash = str_replace('\\', '/', $path);
-            
+
             if (empty($dbPassword)) {
                 $command = "\"{$mysqlPath}\" --user={$dbUser} --host={$dbHost} --port={$dbPort} {$dbName} -e \"source {$pathForwardSlash}\" 2>&1";
             } else {
@@ -139,17 +161,30 @@ class BackupController extends Controller
             }
 
             $result = shell_exec($command);
-            
-            // Verificar resultado - si no hay error en el output, fue exitoso
-            // Usamos query string porque la sesión se restaura junto con la BD
+
+            // Verificar resultado con mensajes descriptivos por tipo de error
             if ($result === null || $result === '' || stripos($result, 'ERROR') === false) {
                 return redirect()->route('backups.index', ['restored' => 1, 'file' => $filename]);
             } else {
-                return redirect()->route('backups.index', ['restore_error' => urlencode($result)]);
+                // Detectar tipo de error específico para mensaje más claro
+                if (stripos($result, 'Access denied') !== false) {
+                    $mensaje = 'El usuario de base de datos no tiene los permisos suficientes para ejecutar la restauración.';
+                } elseif (stripos($result, 'syntax error') !== false || stripos($result, 'You have an error in your SQL syntax') !== false) {
+                    $mensaje = 'El archivo contiene errores de sintaxis SQL. El respaldo puede estar incompleto o corrupto.';
+                } elseif (stripos($result, 'Unknown database') !== false) {
+                    $mensaje = 'La base de datos de destino no existe en el servidor MySQL.';
+                } elseif (stripos($result, 'Can\'t connect') !== false || stripos($result, 'Connection refused') !== false) {
+                    $mensaje = 'No se pudo conectar con el servidor de base de datos durante la restauración.';
+                } else {
+                    $mensaje = trim($result);
+                }
+                return redirect()->route('backups.index')
+                    ->with('error', '❌ Error al restaurar la base de datos: ' . $mensaje);
             }
 
         } catch (\Exception $e) {
-            return redirect()->route('backups.index')->with('error', 'Excepción al restaurar: ' . $e->getMessage());
+            return redirect()->route('backups.index')
+                ->with('error', '❌ Excepción al restaurar: ' . $e->getMessage());
         }
     }
 
