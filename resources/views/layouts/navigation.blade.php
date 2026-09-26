@@ -342,7 +342,137 @@
 
     <!-- Responsive Navigation Menu (Móvil) -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden border-t border-white/60 bg-white/70 backdrop-blur-md">
-        {{-- ... igual que tu archivo ... --}}
+
+        <div class="pt-2 pb-3 space-y-1 px-3">
+
+            @if(Auth::user()->rol == 'admin')
+
+                <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
+                    {{ __('Inicio') }}
+                </x-responsive-nav-link>
+
+                {{-- Grupo: Empleados --}}
+                <div class="pt-2 pb-1 px-1">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-[#0149a8]/60 px-2 mb-1">Empleados</p>
+                    <x-responsive-nav-link :href="route('empleados.index')" :active="request()->routeIs('empleados.*')">
+                        {{ __('Gestión de Empleados') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('categorias.index')" :active="request()->routeIs('categorias.*')">
+                        {{ __('Catálogo Tareas') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('tareas.index')" :active="request()->routeIs('tareas.*')">
+                        {{ __('Gestión de Tareas') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('asignaciones.index')" :active="request()->routeIs('asignaciones.*')">
+                        {{ __('Asignación de Tareas') }}
+                    </x-responsive-nav-link>
+                </div>
+
+                {{-- Grupo: Clientes --}}
+                <div class="pt-2 pb-1 px-1">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-[#0149a8]/60 px-2 mb-1">Clientes</p>
+                    <x-responsive-nav-link :href="route('clientes.index')" :active="request()->routeIs('clientes.*')">
+                        {{ __('Gestión de Clientes') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('cotizaciones.index')" :active="request()->routeIs('cotizaciones.*')">
+                        {{ __('Cotizaciones') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('calendario.general')" :active="request()->routeIs('calendario.general')">
+                        📅 {{ __('Calendario de Publicaciones') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('minutas.index')" :active="request()->routeIs('minutas.*')">
+                        {{ __('Minutas') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('briefs.index')" :active="request()->routeIs('briefs.*')">
+                        📋 {{ __('Briefs') }}
+                    </x-responsive-nav-link>
+                </div>
+
+                {{-- Grupo: Administración --}}
+                <div class="pt-2 pb-1 px-1">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-[#0149a8]/60 px-2 mb-1">Administración</p>
+                    <x-responsive-nav-link :href="route('suscripciones.index')" :active="request()->routeIs('suscripciones.*') || request()->routeIs('categorias-suscripcion.*')">
+                        {{ __('Suscripciones') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('eventos.index')" :active="request()->routeIs('eventos.*')">
+                        📅 {{ __('Calendario de Eventos') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('backups.index')" :active="request()->routeIs('backups.*')">
+                        💾 {{ __('Respaldos') }}
+                    </x-responsive-nav-link>
+                </div>
+
+                {{-- Grupo: Reportes --}}
+                <div class="pt-2 pb-1 px-1">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-[#0149a8]/60 px-2 mb-1">📈 Reportes</p>
+                    <x-responsive-nav-link :href="route('reportes.cumplimiento')" :active="request()->routeIs('reportes.cumplimiento')">
+                        {{ __('Cumplimiento y Puntualidad') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reportes.efectividad')" :active="request()->routeIs('reportes.efectividad')">
+                        {{ __('Efectividad Cotizaciones') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reportes.carga_trabajo')" :active="request()->routeIs('reportes.carga_trabajo')">
+                        {{ __('Carga de Trabajo') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reportes.suscripciones')" :active="request()->routeIs('reportes.suscripciones')">
+                        {{ __('Suscripciones y Costos') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reportes.acuerdos_cliente')" :active="request()->routeIs('reportes.acuerdos_cliente')">
+                        {{ __('Acuerdos por Cliente') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('reportes.crecimiento_clientes')" :active="request()->routeIs('reportes.crecimiento_clientes')">
+                        {{ __('Crecimiento de Clientes') }}
+                    </x-responsive-nav-link>
+                </div>
+
+            @endif
+
+            @if(Auth::user()->rol == 'cliente')
+                <x-responsive-nav-link :href="route('cliente.dashboard')" :active="request()->routeIs('cliente.dashboard')">
+                    {{ __('Calendario') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('cliente.briefs')" :active="request()->routeIs('cliente.briefs')">
+                    {{ __('Briefs y Encuestas') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if(Auth::user()->rol == 'empleado')
+                <x-responsive-nav-link :href="route('asignaciones.misTareas')" :active="request()->routeIs('asignaciones.misTareas')">
+                    {{ __('Mis Tareas') }}
+                </x-responsive-nav-link>
+            @endif
+
+        </div>
+
+        {{-- Perfil / Cerrar Sesión --}}
+        <div class="pt-4 pb-3 border-t border-white/60 px-3">
+            <div class="px-2 mb-2">
+                @if(Auth::user()->rol == 'admin')
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Administrador</div>
+                    <div class="text-sm font-bold text-gray-800">{{ Auth::user()->name }}</div>
+                @elseif(Auth::user()->rol == 'empleado')
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Team Cliché</div>
+                    <div class="text-sm font-bold text-gray-800">
+                        {{ Auth::user()->empleado?->nombre ?? Auth::user()->name }}
+                        {{ Auth::user()->empleado?->apellido_paterno ?? '' }}
+                    </div>
+                @elseif(Auth::user()->rol == 'cliente')
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cliente</div>
+                    <div class="text-sm font-bold text-gray-800">
+                        {{ Auth::user()->cliente?->empresa ?? Auth::user()->cliente?->nombre ?? Auth::user()->name }}
+                    </div>
+                @endif
+            </div>
+
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <x-responsive-nav-link :href="route('logout')"
+                    onclick="event.preventDefault(); this.closest('form').submit();">
+                    {{ __('Cerrar Sesión') }}
+                </x-responsive-nav-link>
+            </form>
+        </div>
+
     </div>
 </nav>
 
