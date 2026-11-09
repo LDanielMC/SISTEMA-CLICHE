@@ -1,59 +1,107 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SISTEMA-CLICHE
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de gestión interna para una agencia de marketing digital: centraliza clientes, cotizaciones, tareas del equipo, calendario de publicaciones, suscripciones y reportes, con un portal para que el cliente conteste briefs. Lo usan tres perfiles: administrador, empleado y cliente.
 
-## About Laravel
+## Funcionalidades principales
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Roles y acceso:** administrador, empleado y cliente, con paneles distintos. Autenticación con Laravel Breeze (registro, verificación de correo y recuperación de contraseña).
+- **Clientes y empleados:** alta, baja, edición y búsqueda; información fiscal por cliente y bitácora de cambios.
+- **Cotizaciones:** partidas, IVA/ISR y exportación a PDF.
+- **Tareas y asignaciones:** catálogo de tareas por categoría, asignación a empleados, evidencia, evaluación y vista "mis tareas".
+- **Calendario de publicaciones:** por cliente, plataforma y formato, con recordatorios por correo.
+- **Briefs:** formularios creados en Google Forms desde el sistema, asignados al cliente, con lectura de sus respuestas y revisión diaria de estatus.
+- **Agenda y eventos:** sincronización con Google Calendar (OAuth).
+- **Minutas y acuerdos:** registro de reuniones con acuerdos, responsables y estatus.
+- **Suscripciones:** control de servicios recurrentes, renovaciones y recordatorios de vencimiento.
+- **Reportes (admin):** cumplimiento y puntualidad, efectividad e ingresos, carga de trabajo, costos de suscripciones, acuerdos por cliente y crecimiento de clientes.
+- **Respaldos de base de datos (admin):** generar, descargar, restaurar y eliminar respaldos `.sql`.
+- **Notificaciones internas** dentro de la aplicación.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Capturas
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+<!-- Agrega aquí tus imágenes, por ejemplo: ![Dashboard](docs/capturas/dashboard.png) -->
 
-## Learning Laravel
+_Pendiente._
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Stack
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Capa | Tecnología |
+|---|---|
+| Backend | PHP ^8.2, Laravel 12 (12.38.1 en `composer.lock`), Laravel Sanctum 4 |
+| Base de datos | MySQL (sesiones, cola y caché en base de datos) |
+| Frontend | Blade, Tailwind CSS 3, Alpine.js 3, Vite 7, Axios |
+| PDF | barryvdh/laravel-dompdf 3.1 |
+| Integraciones | Google API Client 2.15 (Calendar y Forms) |
+| Pruebas | Pest 4 con pest-plugin-laravel |
+| Herramientas de desarrollo | Laravel Pint, Sail, Pail, Breeze |
 
-## Laravel Sponsors
+## Arquitectura
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Aplicación monolítica MVC con Laravel:
 
-### Premium Partners
+- `app/Http/Controllers/`: un controlador por módulo (clientes, cotizaciones, tareas, calendario, briefs, reportes, respaldos, etc.).
+- `app/Http/Middleware/IsAdmin.php`: restringe a administradores las rutas de gestión; los empleados y clientes tienen rutas propias bajo `auth`.
+- `app/Models/`: modelos Eloquent (Cliente, Empleado, Cotizacion, Tarea, AsignacionTarea, Publicacion, Brief, Minuta, Suscripcion, Evento, etc.).
+- `app/Services/`: `GoogleCalendarService` y `GoogleFormsService`, que encapsulan la comunicación con las APIs de Google.
+- `app/Console/Commands/` y `routes/console.php`: comandos programados (`briefs:check-status` corre diario a las 09:00) y de recordatorios (`publicaciones:recordatorios`, `suscripciones:recordatorios`).
+- `database/migrations/` (48 migraciones) y `database/seeders/`; `diagrama_er_cliche.sql` y `documentacion_diagrama_er.md` documentan el modelo entidad-relación.
+- `resources/views/`: vistas Blade por rol y módulo.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Instalación y ejecución
 
-## Contributing
+Requisitos: PHP 8.2+, Composer, Node.js y npm, y MySQL.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+git clone https://github.com/LDanielMC/SISTEMA-CLICHE.git
+cd SISTEMA-CLICHE
 
-## Code of Conduct
+# Instala dependencias, crea .env y APP_KEY, compila los assets
+composer install
+cp .env.example .env
+php artisan key:generate
+npm install
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Configura en `.env` la conexión a MySQL (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) y luego:
 
-## Security Vulnerabilities
+```bash
+php artisan migrate --seed   # crea las tablas y datos iniciales (usuarios, categorías)
+composer dev                 # servidor, cola y Vite en paralelo
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+La app queda en `http://localhost:8000`. Los datos iniciales salen de `database/seeders/`; revísalos y cambia las contraseñas de ejemplo antes de desplegar.
 
-## License
+`composer setup` ejecuta la instalación, las migraciones y `npm run build` en un solo paso.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Variables de entorno relevantes
+
+| Variable | Uso |
+|---|---|
+| `DB_*` | Conexión a MySQL |
+| `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI` | OAuth de Google (Calendar y Forms) |
+| `GOOGLE_CALENDAR_ID`, `GOOGLE_CALENDAR_SYNC_ENABLED`, `GOOGLE_CALENDAR_AUTO_SYNC` | Sincronización de eventos |
+| `MYSQLDUMP_PATH` | Ruta del ejecutable `mysqldump` para los respaldos (por defecto apunta a una instalación de WAMP en Windows) |
+| `MAIL_*` | Envío de recordatorios por correo |
+
+Configuración paso a paso de Google Calendar en [CALENDARIO_GOOGLE_SETUP.md](CALENDARIO_GOOGLE_SETUP.md) y del módulo de suscripciones en [MODULO_SUSCRIPCIONES_README.md](MODULO_SUSCRIPCIONES_README.md).
+
+### Tareas programadas
+
+Para que corran los comandos programados, agrega al cron del servidor:
+
+```
+* * * * * cd /ruta/al/proyecto && php artisan schedule:run >> /dev/null 2>&1
+```
+
+## Pruebas
+
+```bash
+composer test    # limpia la caché de configuración y ejecuta php artisan test (Pest)
+```
+
+Las pruebas automatizadas corren con SQLite en memoria y cubren la autenticación (login, registro, verificación de correo, recuperación y cambio de contraseña) y el perfil. Los módulos de negocio se validaron con pruebas funcionales manuales documentadas en [docs/pruebas/](docs/pruebas/) (un archivo por requerimiento funcional).
+
+## Documentación adicional
+
+- [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md): sistema de diseño de la interfaz.
+- [docs/](docs/): seguridad y respaldos, ambiente de pruebas y base de datos de pruebas (datos ficticios).
